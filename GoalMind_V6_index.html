@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0b1220">
+<title>GoalMind V6</title>
+<style>
+:root{--navy:#0b1220;--blue:#1769e0;--bg:#f3f6fb;--card:#fff;--muted:#687386;--green:#197a3b;--red:#b53a3a;--gold:#b57a00}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);font-family:Arial,Helvetica,sans-serif;color:#172033}
+header{background:var(--navy);color:#fff;padding:26px 18px 24px;text-align:center}
+header h1{font-size:34px;margin:0 0 7px}header p{margin:0;color:#cbd5e5;font-size:17px}
+main{max-width:900px;margin:auto;padding:18px}
+.card{background:var(--card);border-radius:24px;padding:24px;margin:16px 0;box-shadow:0 5px 22px #14213d10}
+h2{font-size:29px;margin:0 0 20px}h3{margin:0 0 8px}
+label{font-weight:700;display:block;margin:14px 0 7px;font-size:17px}
+select,input,button{width:100%;font:inherit;border-radius:15px;padding:15px;border:1px solid #cbd2dc;background:#fff}
+button{background:var(--blue);color:#fff;border:0;font-weight:800;cursor:pointer;margin-top:14px}
+button.secondary{background:#6c7484}button.green{background:#16833f}
+.status{padding:16px;border-radius:16px;background:#ecfaf0;color:#246d3d;margin-top:14px;font-size:18px}
+.muted{color:var(--muted)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.mini{background:#f5f7fc;border-radius:18px;padding:16px}.mini b{font-size:19px}
+.pick{border:1px solid #d8dee8;border-radius:22px;padding:18px;margin:15px 0;background:#fff}
+.rank{font-weight:800;color:#2b66b8}.fixture{font-size:22px;font-weight:800;margin:10px 0}
+.score{background:#f2f5fb;border-radius:18px;padding:15px;margin-top:12px}
+.score strong{font-size:30px}.chips{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.chip{background:#edf1f7;border-radius:20px;padding:8px 11px;font-size:14px}.high{color:var(--green)}.med{color:#9a6500}
+.top{border-left:5px solid var(--blue)}.value{border-left:5px solid #b57a00}
+.small{font-size:14px}.two{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.three{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.stat{background:#f6f8fc;border-radius:14px;padding:12px;text-align:center}.stat b{display:block;font-size:22px}
+.checkbox{display:flex;align-items:center;gap:9px;margin-top:12px}.checkbox input{width:auto}
+.hidden{display:none}.footer{font-size:13px;color:#748094;text-align:center;padding:20px}
+@media(max-width:600px){main{padding:12px}.card{padding:18px;border-radius:20px}h2{font-size:25px}.grid,.two{grid-template-columns:1fr}.three{grid-template-columns:repeat(3,1fr)}.fixture{font-size:20px}}
+</style>
+</head>
+<body>
+<header><h1>⚽ GoalMind V6</h1><p>Smart football prediction dashboard</p></header>
+<main>
+
+<section class="card">
+<h2>🔥 Smart Picks</h2>
+<p class="muted">Scan all 16 supported leagues and automatically find the strongest model signals for your selected date.</p>
+<label for="date">Date</label><input id="date" type="date">
+<button id="scan">🔥 Scan All Leagues</button>
+<div id="status"></div>
+</section>
+
+<section id="best" class="card hidden">
+<h2>🏆 GoalMind Best 5</h2>
+<p class="muted">The five matches with the strongest model signals from the full scan.</p>
+<div id="bestList"></div>
+<button class="green" id="saveBest">⭐ Save Best 5 to My Picks</button>
+</section>
+
+<section id="all" class="card hidden">
+<h2>🌍 All League Results</h2>
+<div id="results"></div>
+</section>
+
+<section class="card">
+<h2>⭐ My Picks</h2>
+<div id="saved">No picks saved yet.</div>
+<button class="secondary" id="clear">Clear My Picks</button>
+</section>
+
+<section class="card">
+<h2>💷 V6 Value Finder</h2>
+<p class="muted">Enter decimal odds for a match from the scan. GoalMind compares the odds with its model probability and calculates fair odds and expected value.</p>
+<div id="valueBox"><p class="muted">Run a scan first, then choose a match below.</p></div>
+</section>
+
+<section class="card">
+<h2>🚀 What's new in GoalMind V6</h2>
+<p>🏆 Best 5 picks · 🌍 16 leagues · 🔥 all-league scan · 🎯 top 3 scores · 🏠 venue form · 📈 goal trends · 💷 Value Finder · ⭐ saved picks.</p>
+<p class="muted">All percentages are statistical estimates from the model and are not guarantees or betting advice.</p>
+</section>
+<div class="footer">Football data supplied by ESPN's public APIs. GoalMind does not require an API key.</div>
+</main>
+
+<script>
+const LEAGUES=[
+["🏴","Premier League","eng.1"],["🏴","Championship","eng.2"],["🏴","League One","eng.3"],["🏴","League Two","eng.4"],
+["🇪🇸","La Liga","esp.1"],["🇩🇪","Bundesliga","ger.1"],["🇮🇹","Serie A","ita.1"],["🇫🇷","Ligue 1","fra.1"],
+["🇳🇱","Eredivisie","ned.1"],["🏴","Scottish Premiership","sco.1"],["🇵🇹","Primeira Liga","por.1"],["🇺🇸","MLS","usa.1"],
+["🇧🇪","Belgian Pro League","bel.1"],["🇹🇷","Turkish Super Lig","tur.1"],["🇦🇹","Austrian Bundesliga","aut.1"],["🇨🇭","Swiss Super League","sui.1"]
+];
+const $=id=>document.getElementById(id);
+const api=(league,path)=>`https://site.api.espn.com/apis/site/v2/sports/soccer/${league}/${path}`;
+const cache=new Map();
+let scanned=[];
+
+function poisson(k,l){return Math.exp(-l)*Math.pow(l,k)/fact(k)}
+function fact(n){let x=1;for(let i=2;i<=n;i++)x*=i;return x}
+function clamp(x,a,b){return Math.max(a,Math.min(b,x))}
+function pct(x){return Math.round(x*100)}
+function teamName(t){return t?.displayName||t?.shortDisplayName||t?.name||"Unknown"}
+function eventTeams(e){let c=e.competitions?.[0]?.competitors||[];let h=c.find(x=>x.homeAway==="home")||c[0],a=c.find(x=>x.homeAway==="away")||c[1];return {h,a}}
+function resultFor(comp,teamId){
+  const c=comp?.competitors||[]; const me=c.find(x=>String(x.team?.id)===String(teamId)); const op=c.find(x=>String(x.team?.id)!==String(teamId));
+  if(!me||!op||me.score==null||op.score==null)return null;
+  const gf=+me.score,ga=+op.score; return {gf,ga,res:gf>ga?"W":gf<ga?"L":"D",date:comp.date||""};
+}
+async function getJSON(url){
+  if(cache.has(url))return cache.get(url);
+  const p=fetch(url).then(r=>{if(!r.ok)throw Error("HTTP "+r.status);return r.json()});
+  cache.set(url,p); return p;
+}
+async function schedule(league,id){
+  const key=league+"|"+id;
+  if(cache.has(key))return cache.get(key);
+  const p=getJSON(api(league,`teams/${id}/schedule?season=${new Date($("date").value).getFullYear()}`)).catch(()=>({events:[]}));
+  cache.set(key,p);return p;
+}
+async function teamStats(league,team){
+  const data=await schedule(league,team.id);
+  let games=(data.events||[]).filter(e=>e.competitions?.[0]?.status?.type?.completed);
+  const now=new Date($("date").value+"T23:59:59");
+  games=games.filter(e=>new Date(e.date)<=now).sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,8);
+  const arr=games.map(e=>resultFor(e.competitions[0],team.id)).filter(Boolean);
+  if(!arr.length)return {gf:1.3,ga:1.3,form:"—",home:"—",away:"—",n:0};
+  let gf=arr.reduce((s,x)=>s+x.gf,0)/arr.length,ga=arr.reduce((s,x)=>s+x.ga,0)/arr.length;
+  const form=arr.map(x=>x.res).join(" ");
+  const home=[],away=[];
+  for(const e of games){
+    const c=e.competitions[0];const x=resultFor(c,team.id);if(!x)continue;
+    const me=c.competitors.find(z=>String(z.team?.id)===String(team.id));
+    (me?.homeAway==="home"?home:away).push(x.res);
+  }
+  return {gf,ga,form,home:home.slice(0,4).join(" ")||"—",away:away.slice(0,4).join(" ")||"—",n:arr.length};
+}
+function predict(hs,as){
+  let lh=clamp((hs.gf*0.62+as.ga*0.38)*1.03,0.25,3.6);
+  let la=clamp((as.gf*0.62+hs.ga*0.38)*0.97,0.20,3.2);
+  const cells=[];let ph=0,pd=0,pa=0;
+  for(let h=0;h<=7;h++)for(let a=0;a<=7;a++){
+    const p=poisson(h,lh)*poisson(a,la);cells.push({h,a,p});
+    if(h>a)ph+=p; else if(h===a)pd+=p; else pa+=p;
+  }
+  const s=cells.sort((x,y)=>y.p-x.p).slice(0,3);
+  const sum=ph+pd+pa;ph/=sum;pd/=sum;pa/=sum;
+  const over=1-cells.filter(()=>false).reduce(()=>0,0); // placeholder
+  let under25=0,btts=0;
+  for(let h=0;h<=7;h++)for(let a=0;a<=7;a++){const p=poisson(h,lh)*poisson(a,la);if(h+a<=2)under25+=p;if(h>0&&a>0)btts+=p}
+  return {lh,la,ph,pd,pa,under25:clamp(under25,0,1),over25:clamp(1-under25,0,1),btts:clamp(btts,0,1),scores:s};
+}
+function confidence(p){let m=Math.max(p.ph,p.pd,p.pa);return m>=.65?"HIGH":m>=.50?"MEDIUM":"LOW"}
+function makeMatch(leagueName,league,h,a,hs,as,p,time){
+  const fav=Math.max(p.ph,p.pd,p.pa),type=p.ph===fav?"H":p.pa===fav?"A":"D";
+  const score=p.scores[0];
+  return {leagueName,league,h:teamName(h),a:teamName(a),hid:h.id,aid:a.id,time,p,hs,as,type,fav,score};
+}
+function card(m,i){
+  const conf=confidence(m.p), cl=conf==="HIGH"?"high":conf==="MEDIUM"?"med":"";
+  const score=m.score;
+  return `<div class="pick ${i<5?"top":""}">
+    <div class="rank">#${i+1} ${m.leagueName} · ${conf} CONFIDENCE</div>
+    <div class="small muted">${new Date(m.time).toLocaleString([], {day:"2-digit",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"})}</div>
+    <div class="fixture">${m.h} <span>🆚</span> ${m.a}</div>
+    <div class="muted">Recent: ${m.h}: ${m.hs.form} &nbsp; ${m.a}: ${m.as.form}</div>
+    <div class="score"><strong>🎯 ${score.h} - ${score.a}</strong>
+      <div class="chips"><span class="chip">Home ${pct(m.p.ph)}%</span><span class="chip">Draw ${pct(m.p.pd)}%</span><span class="chip">Away ${pct(m.p.pa)}%</span></div>
+      <div class="three" style="margin-top:10px">
+        <div class="stat"><span>Expected</span><b>${m.p.lh.toFixed(2)}–${m.p.la.toFixed(2)}</b></div>
+        <div class="stat"><span>O2.5</span><b>${pct(m.p.over25)}%</b></div>
+        <div class="stat"><span>BTTS</span><b>${pct(m.p.btts)}%</b></div>
+      </div>
+      <div class="small muted" style="margin-top:10px">Top scores: ${m.p.scores.map(x=>x.h+"-"+x.a).join(" · ")}</div>
+      <label class="checkbox"><input type="checkbox" onchange="togglePick(${scanned.indexOf(m)})"> ⭐ My Pick</label>
+    </div>
+  </div>`;
+}
+async function scanLeague(l){
+  const [flag,name,slug]=l;
+  try{
+    const d=await getJSON(api(slug,`scoreboard?dates=${$("date").value.replaceAll("-","")}`));
+    const events=d.events||[];let out=[];
+    for(const e of events){
+      if(e.competitions?.[0]?.status?.type?.completed)continue;
+      const {h,a}=eventTeams(e);if(!h?.team||!a?.team)continue;
+      out.push({leagueName:name,league:slug,h:h.team,a:a.team,time:e.date});
+    }
+    return out;
+  }catch{return []}
+}
+async function runScan(){
+  $("status").innerHTML='<div class="status">⏳ Scanning 16 leagues…</div>';
+  scanned=[];$("best").classList.add("hidden");$("all").classList.add("hidden");
+  const lists=await Promise.all(LEAGUES.map(scanLeague));const fixtures=lists.flat();
+  $("status").innerHTML=`<div class="status">⏳ ${fixtures.length} fixtures found. Calculating V6 predictions…</div>`;
+  const unique=[...new Map(fixtures.flatMap(x=>[x.h,x.a]).map(t=>[t.id,t])).values()];
+  const stats=new Map();
+  await Promise.all(unique.map(async t=>{
+    const f=fixtures.find(x=>x.h.id===t.id)||fixtures.find(x=>x.a.id===t.id);
+    stats.set(t.id,await teamStats(f.league,t));
+  }));
+  scanned=fixtures.map(x=>({...x,hs:stats.get(x.h.id),as:stats.get(x.a.id)})).map(x=>({...x,p:predict(x.hs,x.as)}));
+  scanned.sort((a,b)=>Math.max(b.p.ph,b.p.pd,b.p.pa)-Math.max(a.p.ph,a.p.pd,a.p.pa));
+  $("status").innerHTML=`<div class="status">✅ Scan complete: ${scanned.length} fixtures analysed across 16 leagues.</div>`;
+  $("bestList").innerHTML=scanned.slice(0,5).map((m,i)=>card(m,i)).join("")||"<p>No fixtures found.</p>";
+  $("results").innerHTML=scanned.map((m,i)=>card(m,i)).join("")||"<p>No fixtures found.</p>";
+  $("best").classList.remove("hidden");$("all").classList.remove("hidden");
+  valueBox();
+}
+function saved(){try{return JSON.parse(localStorage.getItem("goalmindV6")||"[]")}catch{return[]}}
+function writeSaved(x){localStorage.setItem("goalmindV6",JSON.stringify(x))}
+function togglePick(i){
+  const m=scanned[i];if(!m)return;let s=saved();const key=m.league+"|"+m.h+"|"+m.a+"|"+m.time;
+  if(s.some(x=>x.key===key))s=s.filter(x=>x.key!==key);else s.push({key,league:m.leagueName,h:m.h,a:m.a,score:m.score,p:{ph:m.p.ph,pd:m.p.pd,pa:m.p.pa}});
+  writeSaved(s);renderSaved();
+}
+function renderSaved(){
+  const s=saved();$("saved").innerHTML=s.length?s.map((x,i)=>`<div class="mini"><b>${x.h} vs ${x.a}</b><br>🎯 ${x.score.h}-${x.score.a} · Home ${pct(x.p.ph)}% · Draw ${pct(x.p.pd)}% · Away ${pct(x.p.pa)}%</div>`).join(""):"No picks saved yet.";
+}
+function valueBox(){
+  if(!scanned.length)return;
+  $("valueBox").innerHTML=`<label>Choose a scanned match</label><select id="valueMatch">${scanned.map((m,i)=>`<option value="${i}">${m.leagueName}: ${m.h} vs ${m.a}</option>`).join("")}</select>
+  <div class="two"><div><label>Home odds</label><input id="oh" type="number" step="0.01" placeholder="e.g. 1.80"></div><div><label>Draw odds</label><input id="od" type="number" step="0.01" placeholder="e.g. 3.60"></div></div>
+  <div><label>Away odds</label><input id="oa" type="number" step="0.01" placeholder="e.g. 4.50"></div>
+  <button id="calcValue">Calculate Value</button><div id="valueResult"></div>`;
+  $("calcValue").onclick=calcValue;
+}
+function calcValue(){
+  const m=scanned[+$("valueMatch").value];const odds=[+$("oh").value,+$("od").value,+$("oa").value];const probs=[m.p.ph,m.p.pd,m.p.pa];
+  if(odds.some(x=>!x||x<=1)){ $("valueResult").innerHTML='<div class="status">Enter all three decimal odds.</div>';return}
+  const names=["Home","Draw","Away"];let html='<div class="pick value"><h3>💷 Value Finder</h3>';
+  for(let i=0;i<3;i++){const fair=1/probs[i],edge=probs[i]-(1/odds[i]),ev=probs[i]*odds[i]-1;html+=`<div class="mini"><b>${names[i]}</b><br>Model probability: ${pct(probs[i])}%<br>Fair odds: ${fair.toFixed(2)}<br>Odds entered: ${odds[i].toFixed(2)}<br>Probability edge: ${pct(edge)}%<br>Expected value: ${ev>=0?"+":""}${(ev*100).toFixed(1)}%</div>`}
+  $("valueResult").innerHTML=html+"</div>";
+}
+$("scan").onclick=runScan;
+$("clear").onclick=()=>{localStorage.removeItem("goalmindV6");renderSaved()};
+$("saveBest").onclick=()=>{let s=saved();for(const m of scanned.slice(0,5)){const key=m.league+"|"+m.h+"|"+m.a+"|"+m.time;if(!s.some(x=>x.key===key))s.push({key,league:m.leagueName,h:m.h,a:m.a,score:m.score,p:{ph:m.p.ph,pd:m.p.pd,pa:m.p.pa}})}writeSaved(s);renderSaved()};
+$("date").value=new Date().toISOString().slice(0,10);renderSaved();
+</script>
+</body>
+</html>
