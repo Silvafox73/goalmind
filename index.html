@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>GoalMind V3</title>
+<title>GoalMind V5</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#111827">
 <meta name="mobile-web-app-capable" content="yes">
@@ -33,11 +33,11 @@ button:disabled{opacity:.6}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .metric{background:#fff;border-radius:8px;padding:9px}.metric b{display:block;font-size:12px;color:#667085;margin-bottom:3px}
 .form{margin-top:9px;font-weight:700;letter-spacing:1px;display:flex;flex-wrap:wrap;gap:10px}.formTeam{white-space:nowrap}.w{color:#198754}.d{color:#b77900}.l{color:#c0392b}
-.small{font-size:12px;color:#667085;line-height:1.45}.best-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.best-item{background:#f5f8ff;border-radius:10px;padding:12px}.best-item b{display:block;font-size:12px;color:#667085;margin-bottom:4px}.best-score{font-size:20px;font-weight:800}.pick{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px}.pick input{width:auto}.footer{text-align:center;font-size:12px;color:#667085;padding:8px 0 25px}
+.small{font-size:12px;color:#667085;line-height:1.45}.signal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.signal{background:#f5f8ff;border-radius:10px;padding:12px}.signal b{display:block;font-size:12px;color:#667085;margin-bottom:4px}.signal .big{font-size:20px;font-weight:800}.mini{font-size:12px;color:#667085;margin-top:4px}.best-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.best-item{background:#f5f8ff;border-radius:10px;padding:12px}.best-item b{display:block;font-size:12px;color:#667085;margin-bottom:4px}.best-score{font-size:20px;font-weight:800}.pick{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px}.pick input{width:auto}.value-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.value-card{background:#f5f8ff;border-radius:10px;padding:12px}.value-card h4{margin:0 0 7px;font-size:14px}.value-row{display:grid;grid-template-columns:1fr 90px;gap:8px;align-items:center;margin-top:7px}.value-row input{padding:9px;font-size:14px}.value-good{background:#eefbf1;border-left:4px solid #198754}.value-neutral{background:#fff8e8;border-left:4px solid #b77900}.fair{font-size:12px;color:#667085}.value-result{font-size:13px;font-weight:700;margin-top:7px}.footer{text-align:center;font-size:12px;color:#667085;padding:8px 0 25px}
 </style>
 </head>
 <body>
-<header><h1>⚽ GoalMind V3</h1><div class="sub">Football prediction dashboard</div></header>
+<header><h1>⚽ GoalMind V5</h1><div class="sub">Football prediction & value dashboard</div></header>
 <main>
 <div class="card">
 <h2>Find fixtures</h2>
@@ -67,11 +67,25 @@ button:disabled{opacity:.6}
 </div>
 
 <div class="card">
-<h2>🔥 Best of the Day</h2>
-<div class="small">Scan all 16 supported leagues for the selected date and show the strongest model signals in one place.</div>
-<button id="bestBtn" onclick="bestOfDay()">🔥 Find Best of Day</button>
-<div id="bestStatus" class="status">Choose a date, then tap Find Best of Day.</div>
+<h2>🔥 Best Model Signals</h2>
+<div class="small">Scan all 16 supported leagues for the selected date and bring the strongest statistical signals together.</div>
+<button id="bestBtn" onclick="bestOfDay()">🔥 Scan All Leagues</button>
+<div id="bestStatus" class="status">Choose a date, then tap Scan All Leagues.</div>
 <div id="bestResults" style="display:none"></div>
+</div>
+
+<div class="card">
+<h2>⭐ My Picks</h2>
+<div class="small">Your manually selected fixtures are saved on this device.</div>
+<div id="pickSummary" class="status">No picks saved yet.</div>
+<button onclick="clearPicks()" style="background:#6b7280">Clear My Picks</button>
+</div>
+
+<div class="card">
+<h2>💷 V5 Value Finder</h2>
+<div class="small">Enter the decimal market odds you see for a fixture. GoalMind compares them with its model probability and calculates the model's fair odds, probability edge and expected value. No bookmaker account or API key is required.</div>
+<div id="valueStatus" class="status">Run <b>Scan All Leagues</b> above first, then enter odds below.</div>
+<div id="valueResults"></div>
 </div>
 
 <div id="summary" class="card" style="display:none"></div>
@@ -81,15 +95,15 @@ button:disabled{opacity:.6}
 </div>
 
 <div class="card">
-<h3>🚀 What's new in GoalMind V3</h3>
+<h3>🚀 What's new in GoalMind V5</h3>
 <div class="small">
-<b>🌍 16 leagues</b> · <b>🔥 Best of the Day</b> · <b>🎯 top 3 correct scores</b> ·
-<b>🏠 home/away form</b> · <b>📈 goals trends</b> · <b>⭐ My Picks</b> · <b>🔥 daily ranking</b>
+<b>🌍 16 leagues</b> · <b>🔥 all-league scan</b> · <b>💷 Value Finder</b> · <b>🎯 top 3 correct scores</b> ·
+<b>🏠 home/away form</b> · <b>📈 goal trends</b> · <b>⭐ My Picks</b> · <b>📊 model signals</b>
 </div>
-<p class="small">The model uses recent completed matches, venue-specific form where available, expected goals and league position. Percentages are statistical estimates, not guarantees or betting advice.</p>
+<p class="small">The model uses recent completed matches, venue-specific form where available, expected goals and league position. Value Finder uses the market odds you enter and does not fetch or endorse bookmaker odds automatically. Percentages are statistical estimates, not guarantees or betting advice.</p>
 </div>
 </main>
-<div class="footer">Football data supplied by ESPN's public scoreboard, team-schedule and standings APIs.</div>
+<div class="footer">Football data supplied by ESPN's public scoreboard, team-schedule and standings APIs. V5 Value Finder calculations use user-entered decimal odds.</div>
 
 <script>
 const API='https://site.api.espn.com/apis/site/v2/sports/soccer/';
@@ -229,57 +243,97 @@ async function bestOfDay(){
   const btn=document.getElementById('bestBtn');
   if(!date){status.className='status error';status.textContent='Please choose a date first.';return}
   btn.disabled=true; out.style.display='none'; out.innerHTML='';
-  status.className='status'; status.textContent='⏳ Scanning 16 leagues for fixtures…';
+  status.className='status'; status.textContent='⏳ Scanning 16 leagues…';
   try{
     const slugs=Object.keys(LEAGUE_NAMES);
-    const batches=[];
+    const all=[];
     for(let i=0;i<slugs.length;i+=4){
       const batch=await Promise.all(slugs.slice(i,i+4).map(slug=>analyseLeagueForDate(slug,date)));
-      batches.push(...batch);
+      all.push(...batch.flat());
       status.textContent=`⏳ Scanned ${Math.min(i+4,slugs.length)} of ${slugs.length} leagues…`;
     }
-    const all=batches.flat();
-    if(!all.length){
-      status.className='status error';status.textContent='No fixtures were returned for the selected date across the supported leagues.';return;
-    }
-    const by1x2=[...all].sort((a,b)=>Math.max(b.p.H,b.p.D,b.p.A)-Math.max(a.p.H,a.p.D,a.p.A));
+    if(!all.length){status.className='status error';status.textContent='No fixtures were returned for the selected date across the supported leagues.';return;}
+
+    const confidence=x=>Math.max(x.p.H,x.p.D,x.p.A);
+    const top=[...all].sort((a,b)=>confidence(b)-confidence(a)).slice(0,10);
     const home=[...all].sort((a,b)=>b.p.H-a.p.H)[0];
     const away=[...all].sort((a,b)=>b.p.A-a.p.A)[0];
     const draw=[...all].sort((a,b)=>b.p.D-a.p.D)[0];
     const over=[...all].sort((a,b)=>b.p.over-a.p.over)[0];
     const under=[...all].sort((a,b)=>b.p.under-a.p.under)[0];
     const btts=[...all].sort((a,b)=>b.p.btts-a.p.btts)[0];
-    const top=by1x2.slice(0,8);
+    const high=[...all].filter(x=>confidence(x)>=60).length;
+    const avgHome=all.reduce((n,x)=>n+x.p.H,0)/all.length;
+    renderValueFinder(all);
 
-    const card=x=>{
-      const dt=new Date(x.m.date);
-      return `<div class="best-item">
-        <b>${x.league} · ${dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</b>
-        <div>${x.t.home.team.displayName} vs ${x.t.away.team.displayName}</div>
-        <div class="best-score">🎯 ${x.p.score}</div>
-        <div class="small">Home ${x.p.H.toFixed(0)}% · Draw ${x.p.D.toFixed(0)}% · Away ${x.p.A.toFixed(0)}%</div>
-      </div>`;
-    };
+    const label=x=>`${x.t.home.team.displayName} vs ${x.t.away.team.displayName}`;
+    const time=x=>new Date(x.m.date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    const signal=(title,x,value)=>`<div class="signal"><b>${title}</b><div>${x.league} · ${time(x)}</div><div class="big">${value}</div><div class="mini">${label(x)} · ${x.p.score}</div></div>`;
+    const card=x=>`<div class="best-item"><b>${x.league} · ${time(x)}</b><div>${label(x)}</div><div class="best-score">🎯 ${x.p.score}</div><div class="small">Home ${x.p.H.toFixed(0)}% · Draw ${x.p.D.toFixed(0)}% · Away ${x.p.A.toFixed(0)}%</div><div class="small">Top scores: ${x.p.topScores.join(' · ')}</div></div>`;
 
-    out.innerHTML=`<div class="small"><b>${all.length} fixtures</b> found across the supported leagues.</div>
-      <div class="best-grid">
-        <div class="best-item"><b>🎯 Highest 1X2 confidence</b>${card(by1x2[0])}</div>
-        <div class="best-item"><b>🏠 Strongest home probability</b>${card(home)}</div>
-        <div class="best-item"><b>✈️ Strongest away probability</b>${card(away)}</div>
-        <div class="best-item"><b>🤝 Strongest draw probability</b>${card(draw)}</div>
-        <div class="best-item"><b>⚽ Highest Over 2.5</b>${card(over)}<div class="small">${over.p.over.toFixed(0)}% Over 2.5</div></div>
-        <div class="best-item"><b>🥅 Highest Under 2.5</b>${card(under)}<div class="small">${under.p.under.toFixed(0)}% Under 2.5</div></div>
-        <div class="best-item"><b>🤝 Highest BTTS</b>${card(btts)}<div class="small">${btts.p.btts.toFixed(0)}% BTTS</div></div>
+    out.innerHTML=`
+      <div class="small"><b>${all.length} fixtures</b> analysed across the 16 supported leagues.</div>
+      <div class="signal-grid">
+        ${signal('🎯 Strongest 1X2 model signal',top[0],confidence(top[0]).toFixed(0)+'%')}
+        ${signal('🏠 Strongest home signal',home,home.p.H.toFixed(0)+'%')}
+        ${signal('✈️ Strongest away signal',away,away.p.A.toFixed(0)+'%')}
+        ${signal('🤝 Strongest draw signal',draw,draw.p.D.toFixed(0)+'%')}
+        ${signal('⚽ Highest Over 2.5 signal',over,over.p.over.toFixed(0)+'%')}
+        ${signal('🥅 Highest Under 2.5 signal',under,under.p.under.toFixed(0)+'%')}
+        ${signal('🤝 Highest BTTS signal',btts,btts.p.btts.toFixed(0)+'%')}
+        <div class="signal"><b>📊 Daily model snapshot</b><div>${high} fixtures at 60%+ 1X2 probability</div><div class="big">${avgHome.toFixed(0)}% avg home</div><div class="mini">Across all returned fixtures</div></div>
       </div>
-      <h3 style="margin-top:18px">🔥 Top 8 model-confidence fixtures</h3>
+      <h3 style="margin-top:18px">🔥 Top 10 model-confidence fixtures</h3>
       <div class="best-grid">${top.map(card).join('')}</div>
-      <p class="small" style="margin-top:12px">These are model statistics, not guarantees or betting advice.</p>`;
+      <p class="small" style="margin-top:12px">These are statistical model outputs. They are not guarantees, betting advice, or a recommendation to place a wager.</p>`;
     out.style.display='block';
     status.className='status ok';
-    status.textContent=`✅ Best of the Day complete: ${all.length} fixtures analysed.`;
-  }catch(e){
-    status.className='status error';status.textContent='❌ '+e.message;
-  }finally{btn.disabled=false}
+    status.textContent=`✅ Scan complete: ${all.length} fixtures analysed across 16 leagues.`;
+  }catch(e){status.className='status error';status.textContent='❌ '+e.message;}
+  finally{btn.disabled=false}
+}
+
+
+let latestBestFixtures=[];
+function esc(s){return String(s).replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;').replaceAll("'",'&#39;')}
+function marketRows(x){
+  const p=x.p;
+  const markets=[
+    ['Home',p.H/100],['Draw',p.D/100],['Away',p.A/100],
+    ['Over 2.5',p.over/100],['Under 2.5',p.under/100],['BTTS',p.btts/100]
+  ];
+  return markets.map(([name,prob],i)=>{
+    const fair=prob>0?(1/prob):0;
+    const id='v_'+String(x.m.id)+'_'+i;
+    return `<div class="value-row"><div><b>${name}</b><div class="fair">Model ${ (prob*100).toFixed(0)}% · Fair ${fair.toFixed(2)}</div></div><input id="${id}" type="number" min="1.01" step="0.01" placeholder="Odds" oninput="calcValue('${id}',${prob},'${esc(name)}','${String(x.m.id)}')"></div><div id="${id}_out" class="value-result"></div>`;
+  }).join('');
+}
+function calcValue(id,prob,name,matchId){
+  const el=document.getElementById(id),out=document.getElementById(id+'_out');
+  const odds=Number(el?.value);
+  if(!Number.isFinite(odds)||odds<=1){out.textContent='';return}
+  const implied=1/odds,edge=(prob-implied)*100,ev=(prob*odds-1)*100;
+  const good=edge>=5 && ev>0;
+  out.className='value-result '+(good?'value-good':'value-neutral');
+  out.innerHTML=`${good?'⭐ Model value signal':'ℹ️ Model vs market'} · Implied ${ (implied*100).toFixed(0)}% · Edge ${edge>=0?'+':''}${edge.toFixed(1)}% · EV ${ev>=0?'+':''}${ev.toFixed(1)}%`;
+  updateValueSummary();
+}
+function updateValueSummary(){
+  const outs=[...document.querySelectorAll('.value-result')].map(x=>x.textContent).filter(Boolean);
+  const positive=outs.filter(x=>x.includes('Model value signal')).length;
+  const el=document.getElementById('valueStatus');
+  if(el) el.innerHTML=outs.length?`💷 ${outs.length} market price${outs.length===1?'':'s'} entered · <b>${positive}</b> showing a model edge of at least 5 percentage points and positive expected value.`:'Enter market odds to compare them with GoalMind.';
+}
+function renderValueFinder(fixtures){
+  const out=document.getElementById('valueResults'); if(!out)return;
+  latestBestFixtures=fixtures||[];
+  if(!latestBestFixtures.length){out.innerHTML='<div class="small">Run Scan All Leagues to populate the Value Finder.</div>';return;}
+  const top=[...latestBestFixtures].sort((a,b)=>Math.max(b.p.H,b.p.D,b.p.A)-Math.max(a.p.H,a.p.D,a.p.A)).slice(0,10);
+  out.innerHTML=top.map((x,i)=>{
+    const label=`${x.t.home.team.displayName} vs ${x.t.away.team.displayName}`;
+    const time=new Date(x.m.date).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+    return `<div class="value-card"><h4>#${i+1} · ${esc(x.league)} · ${time}</h4><div><b>${esc(label)}</b> · 🎯 ${x.p.score}</div><div class="small">Model: Home ${x.p.H.toFixed(0)}% · Draw ${x.p.D.toFixed(0)}% · Away ${x.p.A.toFixed(0)}% · O2.5 ${x.p.over.toFixed(0)}% · U2.5 ${x.p.under.toFixed(0)}% · BTTS ${x.p.btts.toFixed(0)}%</div>${marketRows(x)}</div>`;
+  }).join('');
 }
 
 async function loadFixtures(){
@@ -363,15 +417,26 @@ async function loadFixtures(){
  }finally{btn.disabled=false}
 }
 
-function isPicked(id){
- const picks=JSON.parse(localStorage.getItem('goalmind_picks')||'[]');
- return picks.includes(String(id));
-}
+function getPicks(){try{return JSON.parse(localStorage.getItem('goalmind_picks')||'[]')}catch(e){return []}}
+function isPicked(id){return getPicks().includes(String(id));}
 function togglePick(id){
- const key=String(id); let picks=JSON.parse(localStorage.getItem('goalmind_picks')||'[]');
+ const key=String(id); let picks=getPicks();
  if(picks.includes(key)) picks=picks.filter(x=>x!==key); else picks.push(key);
  localStorage.setItem('goalmind_picks',JSON.stringify(picks));
+ updatePickSummary();
 }
+function clearPicks(){
+ localStorage.removeItem('goalmind_picks');
+ updatePickSummary();
+ document.querySelectorAll('.pick input').forEach(x=>x.checked=false);
+}
+function updatePickSummary(){
+ const el=document.getElementById('pickSummary'); if(!el)return;
+ const n=getPicks().length;
+ el.className='status '+(n?'ok':'');
+ el.textContent=n?`⭐ ${n} fixture${n===1?'':'s'} saved as My Picks on this device.`:'No picks saved yet.';
+}
+window.addEventListener('load',updatePickSummary);
 </script>
 
 <script>

@@ -1,12 +1,12 @@
 {
-  "name": "GoalMind Football Predictor",
+  "name": "GoalMind V5 Football Predictor",
   "short_name": "GoalMind",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#f4f7fb",
   "theme_color": "#111827",
-  "description": "GoalMind football prediction dashboard.",
+  "description": "GoalMind V5 football prediction dashboard.",
   "icons": [
     {
       "src": "icon-192.png",

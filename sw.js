@@ -1,4 +1,4 @@
-const CACHE = "goalmind-v2-2";
+const CACHE = "goalmind-v5-1";
 const APP_SHELL = [
   "./",
   "./index.html",
