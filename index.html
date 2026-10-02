@@ -192,7 +192,7 @@ function predict(h,a,all,pos,cutoff){
    if(i>j)H+=p;else if(i===j)D+=p;else A+=p;
    if(i+j>=3)over+=p;if(i>0&&j>0)btts+=p;
    scorePairs.push({i,j,p});
- }
+ scorePairs.sort((a,b)=>(b.p*(1+0.08*Math.min(b.i,b.j)))-(a.p*(1+0.08*Math.min(a.i,a.j))));
  scorePairs.sort((a,b)=>(b.p*(1+0.08*Math.min(b.i,b.j)))-(a.p*(1+0.08*Math.min(a.i,a.j))));
  const total=H+D+A; H/=total;D/=total;A/=total;over/=total;btts/=total;
  const max=Math.max(H,D,A);
