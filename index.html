@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GoalMind Football Predictor</title>
+<style>
+body{font-family:Arial,sans-serif;background:#f4f7fb;margin:0;color:#172033}
+header{background:#111827;color:white;padding:20px;text-align:center}
+h1{margin:0;font-size:30px}.sub{opacity:.8;margin-top:6px}
+main{max-width:850px;margin:18px auto;padding:0 14px}
+.card{background:white;border-radius:14px;padding:18px;margin-bottom:16px;box-shadow:0 3px 12px #0001}
+label{font-weight:bold;display:block;margin:10px 0 6px}
+input,select,button{width:100%;box-sizing:border-box;padding:13px;border:1px solid #ccd4df;border-radius:9px;font-size:16px}
+button{background:#1769e0;color:white;border:0;font-weight:bold;margin-top:12px}
+button.secondary{background:#374151}
+.small{font-size:13px;color:#657083}
+.status{padding:12px;border-radius:9px;background:#eef4ff;margin-top:12px;white-space:pre-wrap}
+.error{background:#fff0f0;color:#9b1c1c}.ok{background:#eefbf1;color:#176b2b}
+.fixture{border:1px solid #dde3ea;border-radius:12px;padding:14px;margin:12px 0}
+.teams{font-size:19px;font-weight:bold}.date{font-size:13px;color:#687386;margin-bottom:8px}
+.pred{background:#f5f8ff;border-radius:10px;padding:12px;margin-top:10px}
+.score{font-size:27px;font-weight:bold}
+.bar{height:10px;background:#e5e7eb;border-radius:5px;overflow:hidden;margin:6px 0 12px}
+.note{font-size:12px;color:#667085}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<header>
+<h1>⚽ GoalMind</h1>
+<div class="sub">Free football score prediction engine</div>
+</header>
+<main>
+<div class="card">
+<h2>1. Football-data.org</h2>
+<label for="token">Your API token</label>
+<input id="token" type="password" placeholder="Paste your token here">
+<div class="small">Your token is saved only in this browser. Do not put it into the GitHub code.</div>
+<button onclick="saveToken()">Save Token</button>
+<div id="tokenStatus" class="status">No token saved yet.</div>
+</div>
+
+<div class="card">
+<h2>2. Select fixtures</h2>
+<label for="league">League</label>
+<select id="league">
+<option value="PL">🏴 Premier League</option>
+<option value="ELC">🏴 Championship</option>
+<option value="SA">🇮🇹 Serie A</option>
+<option value="BL1">🇩🇪 Bundesliga</option>
+<option value="PD">🇪🇸 La Liga</option>
+<option value="FL1">🇫🇷 Ligue 1</option>
+<option value="DED">🇳🇱 Eredivisie</option>
+<option value="PPL">🇵🇹 Primeira Liga</option>
+<option value="CL">🇪🇺 Champions League</option>
+</select>
+<label for="date">Date</label>
+<input id="date" type="date">
+<button onclick="loadFixtures()">Find Fixtures</button>
+<div id="status" class="status">Enter your token, save it, then choose a date.</div>
+</div>
+
+<div id="results" class="card hidden">
+<h2>Fixtures & GoalMind Predictions</h2>
+<div id="fixtureList"></div>
+</div>
+</main>
+
+<script>
+const API='https://api.football-data.org/v4';
+const $=id=>document.getElementById(id);
+
+function todayISO(){
+  const d=new Date(); d.setMinutes(d.getMinutes()-d.getTimezoneOffset());
+  return d.toISOString().slice(0,10);
+}
+$('date').value=todayISO();
+
+function getToken(){return localStorage.getItem('goalmind_fd_token')||''}
+
+function saveToken(){
+  const t=$('token').value.trim();
+  if(!t){$('tokenStatus').className='status error';$('tokenStatus').textContent='Please paste your token first.';return}
+  localStorage.setItem('goalmind_fd_token',t);
+  $('token').value='';
+  $('tokenStatus').className='status ok';
+  $('tokenStatus').textContent='✅ Token saved on this device.';
+}
+
+if(getToken()){
+  $('tokenStatus').className='status ok';
+  $('tokenStatus').textContent='✅ Token already saved on this device.';
+}
+
+async function api(path){
+  const t=getToken();
+  if(!t) throw new Error('Please enter and save your football-data.org token first.');
+  const r=await fetch(API+path,{headers:{'X-Auth-Token':t}});
+  const txt=await r.text();
+  let data; try{data=JSON.parse(txt)}catch{data={message:txt}}
+  if(!r.ok) throw new Error('API error '+r.status+': '+(data.message||data.error||JSON.stringify(data)));
+  return data;
+}
+
+function clamp(n,a,b){return Math.max(a,Math.min(b,n))}
+function poisson(k,lambda){
+  let p=Math.exp(-lambda), term=1;
+  for(let i=1;i<=k;i++){term*=lambda/i;p+=0; if(i===k)return Math.exp(-lambda)*term}
+}
+function probs(lambda){
+  const arr=[]; let total=0;
+  for(let k=0;k<=7;k++){let p=Math.exp(-lambda)*Math.pow(lambda,k)/factorial(k);arr.push(p);total+=p}
+  return arr.map(x=>x/total);
+}
+function factorial(n){let x=1;for(let i=2;i<=n;i++)x*=i;return x}
+
+function teamStats(matches, teamId){
+  const ms=matches.filter(m=>m.status==='FINISHED' && (m.homeTeam.id===teamId || m.awayTeam.id===teamId))
+                  .sort((a,b)=>new Date(b.utcDate)-new Date(a.utcDate)).slice(0,10);
+  let gf=0,ga=0,pts=0,count=0;
+  ms.forEach(m=>{
+    const home=m.homeTeam.id===teamId;
+    const gfor=home?m.score.fullTime.home:m.score.fullTime.away;
+    const gag=home?m.score.fullTime.away:m.score.fullTime.home;
+    if(Number.isFinite(gfor)&&Number.isFinite(gag)){
+      gf+=gfor;ga+=gag;count++;
+      if(gfor>gag)pts+=3; else if(gfor===gag)pts+=1;
+    }
+  });
+  return {gf:count?gf/count:1.2,ga:count?ga/count:1.2,pts:count?pts/count:1.3,count};
+}
+
+function predict(match, allMatches, table){
+  const h=teamStats(allMatches,match.homeTeam.id), a=teamStats(allMatches,match.awayTeam.id);
+  const ht=table.find(x=>x.team.id===match.homeTeam.id), at=table.find(x=>x.team.id===match.awayTeam.id);
+  const hpos=ht?ht.position:10, apos=at?at.position:10;
+  const posFactor=clamp((apos-hpos)*0.025,-0.25,0.25);
+  let homeX=clamp(1.45 + (h.gf-a.ga)*0.38 + posFactor,0.25,3.5);
+  let awayX=clamp(1.10 + (a.gf-h.ga)*0.38 - posFactor,0.20,3.2);
+
+  const hp=probs(homeX), ap=probs(awayX);
+  let home=0,draw=0,away=0,best=[0,0,0];
+  let bestP=0;
+  for(let i=0;i<8;i++)for(let j=0;j<8;j++){
+    const p=hp[i]*ap[j];
+    if(i>j)home+=p; else if(i===j)draw+=p; else away+=p;
+    if(p>bestP){bestP=p;best=[i,j,p]}
+  }
+  const sum=home+draw+away;
+  return {
+    score:`${best[0]} - ${best[1]}`,
+    home:home/sum*100,draw:draw/sum*100,away:away/sum*100,
+    h,hp:a, homeX,awayX
+  };
+}
+
+async function loadFixtures(){
+  $('results').classList.add('hidden');
+  $('fixtureList').innerHTML='';
+  const date=$('date').value, league=$('league').value;
+  if(!date){$('status').className='status error';$('status').textContent='Please choose a date.';return}
+  $('status').className='status';
+  $('status').textContent='⏳ Loading fixtures and data...';
+  try{
+    const from=new Date(date+'T00:00:00Z'); from.setUTCDate(from.getUTCDate()-35);
+    const to=new Date(date+'T23:59:59Z'); to.setUTCDate(to.getUTCDate()+1);
+    const f1=from.toISOString().slice(0,10), f2=to.toISOString().slice(0,10);
+    const [matches,standings]=await Promise.all([
+      api(`/competitions/${league}/matches?dateFrom=${f1}&dateTo=${f2}`),
+      api(`/competitions/${league}/standings`)
+    ]);
+    const wanted=matches.matches.filter(m=>m.utcDate.slice(0,10)===date);
+    $('status').className='status ok';
+    $('status').textContent=`✅ API connected. ${wanted.length} fixture(s) found for ${date}.`;
+    $('results').classList.remove('hidden');
+    if(!wanted.length){
+      $('fixtureList').innerHTML='<p>No fixtures are scheduled in this competition on the selected date.</p>';
+      return;
+    }
+    const table=(standings.standings||[]).find(s=>s.type==='TOTAL')?.table || standings.standings?.[0]?.table || [];
+    $('fixtureList').innerHTML=wanted.map((m,i)=>{
+      const p=predict(m,matches.matches,table);
+      return `<div class="fixture">
+        <div class="date">${new Date(m.utcDate).toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'})}</div>
+        <div class="teams">${m.homeTeam.name} 🆚 ${m.awayTeam.name}</div>
+        <div class="pred">
+          <div class="score">🎯 GoalMind: ${p.score}</div>
+          <div><b>1X2 probability</b></div>
+          <div>Home ${p.home.toFixed(0)}%</div><div class="bar"><div style="width:${p.home}%"></div></div>
+          <div>Draw ${p.draw.toFixed(0)}%</div><div class="bar"><div style="width:${p.draw}%"></div></div>
+          <div>Away ${p.away.toFixed(0)}%</div><div class="bar"><div style="width:${p.away}%"></div></div>
+          <div class="note">Prediction uses recent completed results plus current league position. It is a statistical estimate, not a guarantee.</div>
+        </div>
+      </div>`;
+    }).join('');
+  }catch(e){
+    $('status').className='status error';
+    $('status').textContent='❌ '+e.message;
+    $('results').classList.add('hidden');
+  }
+}
+</script>
+</body>
+</html>
