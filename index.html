@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>GoalMind V2</title>
+<title>GoalMind V3</title>
 <link rel="manifest" href="manifest.json">
 <meta name="theme-color" content="#111827">
 <meta name="mobile-web-app-capable" content="yes">
@@ -33,16 +33,33 @@ button:disabled{opacity:.6}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .metric{background:#fff;border-radius:8px;padding:9px}.metric b{display:block;font-size:12px;color:#667085;margin-bottom:3px}
 .form{margin-top:9px;font-weight:700;letter-spacing:1px;display:flex;flex-wrap:wrap;gap:10px}.formTeam{white-space:nowrap}.w{color:#198754}.d{color:#b77900}.l{color:#c0392b}
-.small{font-size:12px;color:#667085;line-height:1.45}.footer{text-align:center;font-size:12px;color:#667085;padding:8px 0 25px}
+.small{font-size:12px;color:#667085;line-height:1.45}.pick{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px}.pick input{width:auto}.footer{text-align:center;font-size:12px;color:#667085;padding:8px 0 25px}
 </style>
 </head>
 <body>
-<header><h1>⚽ GoalMind V2</h1><div class="sub">Football prediction dashboard</div></header>
+<header><h1>⚽ GoalMind V3</h1><div class="sub">Football prediction dashboard</div></header>
 <main>
 <div class="card">
 <h2>Find fixtures</h2>
 <label for="league">League</label>
-<select id="league"><option value="eng.1">🏴 Premier League</option></select>
+<select id="league">
+<option value="eng.1">🏴 Premier League</option>
+<option value="eng.2">🏴 Championship</option>
+<option value="eng.3">🏴 League One</option>
+<option value="eng.4">🏴 League Two</option>
+<option value="esp.1">🇪🇸 La Liga</option>
+<option value="ger.1">🇩🇪 Bundesliga</option>
+<option value="ita.1">🇮🇹 Serie A</option>
+<option value="fra.1">🇫🇷 Ligue 1</option>
+<option value="ned.1">🇳🇱 Eredivisie</option>
+<option value="sco.1">🏴 Scottish Premiership</option>
+<option value="por.1">🇵🇹 Primeira Liga</option>
+<option value="bel.1">🇧🇪 Belgian Pro League</option>
+<option value="tur.1">🇹🇷 Turkish Super Lig</option>
+<option value="usa.1">🇺🇸 MLS</option>
+<option value="uefa.champions">🏆 Champions League</option>
+<option value="uefa.europa">🏆 Europa League</option>
+</select>
 <label for="date">Date</label>
 <input id="date" type="date">
 <button id="findBtn" onclick="loadFixtures()">Find Fixtures & Predict</button>
@@ -51,25 +68,36 @@ button:disabled{opacity:.6}
 
 <div id="summary" class="card" style="display:none"></div>
 <div id="results" class="card" style="display:none">
-<h2>🎯 GoalMind V2 Predictions</h2>
+<h2>🎯 GoalMind V3 Predictions</h2>
 <div id="fixtureList"></div>
 </div>
 
 <div class="card">
-<h3>What's new in V2</h3>
+<h3>🚀 What's new in GoalMind V3</h3>
 <div class="small">
-<b>🎯 Score prediction</b> · <b>1X2 probabilities</b> · <b>📈 recent form</b> ·
-<b>⚽ expected goals</b> · <b>🥅 Over/Under 2.5</b> · <b>🤝 Both Teams To Score</b> ·
-<b>🏆 league position</b> · <b>🔥 daily ranking</b>
+<b>🌍 16 leagues</b> · <b>🎯 top 3 correct scores</b> · <b>🏠 home/away form</b> ·
+<b>📈 goals trends</b> · <b>⭐ My Picks</b> · <b>🔥 daily ranking</b>
 </div>
-<p class="small">The percentages and score are model estimates based on available recent results and league position. They are not guarantees or betting advice.</p>
+<p class="small">The model uses recent completed matches, venue-specific form where available, expected goals and league position. Percentages are statistical estimates, not guarantees or betting advice.</p>
 </div>
 </main>
 <div class="footer">Football data supplied by ESPN's public scoreboard, team-schedule and standings APIs.</div>
 
 <script>
-const BASE='https://site.api.espn.com/apis/site/v2/sports/soccer/eng.1/scoreboard';
-const STAND='https://site.api.espn.com/apis/v2/sports/soccer/eng.1/standings';
+const API='https://site.api.espn.com/apis/site/v2/sports/soccer/';
+const STAND='https://site.api.espn.com/apis/v2/sports/soccer/';
+const LEAGUE_NAMES={
+ 'eng.1':'Premier League','eng.2':'Championship','eng.3':'League One','eng.4':'League Two',
+ 'esp.1':'La Liga','ger.1':'Bundesliga','ita.1':'Serie A','fra.1':'Ligue 1','ned.1':'Eredivisie',
+ 'sco.1':'Scottish Premiership','por.1':'Primeira Liga','bel.1':'Belgian Pro League',
+ 'tur.1':'Turkish Super Lig','usa.1':'MLS','uefa.champions':'Champions League','uefa.europa':'Europa League'
+};
+function leagueUrls(slug){
+ return {
+   base:`${API}${slug}/scoreboard`,
+   stand:`${STAND}${slug}/standings`
+ };
+}
 
 function todayISO(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
 document.getElementById('date').value=todayISO();
@@ -99,14 +127,22 @@ function extractRows(teamId,all,cutoff){
    if(!side||!opp)return null;
    const gf=goals(side),ga=goals(opp);
    if(gf===null||ga===null)return null;
-   return {date:m.date,gf,ga,pts:gf>ga?3:gf===ga?1:0,result:gf>ga?'W':gf===ga?'D':'L'};
+   return {date:m.date,gf,ga,pts:gf>ga?3:gf===ga?1:0,result:gf>ga?'W':gf===ga?'D':'L',venue:side.homeAway};
  }).filter(Boolean).sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,8);
 }
 function stats(teamId,all,cutoff){
- const rows=extractRows(teamId,all,cutoff);let gf=0,ga=0,pts=0,cs=0,btts=0,o25=0;
- rows.forEach(x=>{gf+=x.gf;ga+=x.ga;pts+=x.pts;if(x.ga===0)cs++;if(x.gf>0&&x.ga>0)btts++;if(x.gf+x.ga>=3)o25++});
- return {rows,gf:rows.length?gf/rows.length:1.25,ga:rows.length?ga/rows.length:1.25,
- pts:rows.length?pts/rows.length:1.2,cs:rows.length?cs/rows.length:0,btts:rows.length?btts/rows.length:0,o25:rows.length?o25/rows.length:0};
+ const rows=extractRows(teamId,all,cutoff);
+ const homeRows=rows.filter(x=>x.venue==='home');
+ const awayRows=rows.filter(x=>x.venue==='away');
+ const calc=rs=>{
+   let gf=0,ga=0,pts=0,cs=0,btts=0,o25=0;
+   rs.forEach(x=>{gf+=x.gf;ga+=x.ga;pts+=x.pts;if(x.ga===0)cs++;if(x.gf>0&&x.ga>0)btts++;if(x.gf+x.ga>=3)o25++});
+   return {rows:rs,gf:rs.length?gf/rs.length:1.25,ga:rs.length?ga/rs.length:1.25,
+     pts:rs.length?pts/rs.length:1.2,cs:rs.length?cs/rs.length:0,btts:rs.length?btts/rs.length:0,
+     o25:rs.length?o25/rs.length:0};
+ };
+ const allS=calc(rows), hs=calc(homeRows.slice(0,5)), as=calc(awayRows.slice(0,5));
+ return {...allS,home:hs,away:as};
 }
 function positionMap(data){
  const out=new Map();
@@ -120,26 +156,29 @@ function positionMap(data){
 function predict(h,a,all,pos,cutoff){
  const hs=stats(h.team.id,all,cutoff),as=stats(a.team.id,all,cutoff);
  const hp=pos.get(String(h.team.id))||10,ap=pos.get(String(a.team.id))||10;
+ const hvenue=hs.home.rows.length>=2?hs.home:hs;
+ const avenu=as.away.rows.length>=2?as.away:as;
  const positionEdge=Math.max(-.25,Math.min(.25,(ap-hp)*.018));
- let hx=1.50+(hs.gf-as.ga)*.34+(hs.pts-as.pts)*.07+positionEdge;
- let ax=1.06+(as.gf-hs.ga)*.33-(hs.pts-as.pts)*.05-positionEdge*.5;
- hx=Math.max(.25,Math.min(3.5,hx));ax=Math.max(.20,Math.min(3.2,ax));
+ let hx=1.50+(hvenue.gf-avenu.ga)*.34+(hvenue.pts-avenu.pts)*.07+positionEdge;
+ let ax=1.06+(avenu.gf-hvenue.ga)*.33-(hvenue.pts-avenu.pts)*.05-positionEdge*.5;
+ hx=Math.max(.25,Math.min(3.5,hx)); ax=Math.max(.20,Math.min(3.2,ax));
 
  let hpv=[],apv=[];for(let i=0;i<9;i++){hpv[i]=poisson(i,hx);apv[i]=poisson(i,ax)}
- let H=0,D=0,A=0,best=-1,bs=[0,0],over=0,btts=0;
+ let H=0,D=0,A=0,over=0,btts=0,scorePairs=[];
  for(let i=0;i<9;i++)for(let j=0;j<9;j++){
    const p=hpv[i]*apv[j];
    if(i>j)H+=p;else if(i===j)D+=p;else A+=p;
    if(i+j>=3)over+=p;if(i>0&&j>0)btts+=p;
-   if(p>best){best=p;bs=[i,j]}
+   scorePairs.push({i,j,p});
  }
- const total=H+D+A;
- H/=total;D/=total;A/=total;over/=total;btts/=total;
+ scorePairs.sort((a,b)=>b.p-a.p);
+ const total=H+D+A; H/=total;D/=total;A/=total;over/=total;btts/=total;
  const max=Math.max(H,D,A);
  const confidence=max>=.55?'High':max>=.45?'Medium':'Low';
- return {score:`${bs[0]} - ${bs[1]}`,H:100*H,D:100*D,A:100*A,
-         over:100*over,under:100*(1-over),btts:100*btts,
-         hx,ax,confidence,hs,as,hp,ap};
+ const topScores=scorePairs.slice(0,3).map(x=>`${x.i}-${x.j}`);
+ return {score:`${scorePairs[0].i} - ${scorePairs[0].j}`,topScores,H:100*H,D:100*D,A:100*A,
+   over:100*over,under:100*(1-over),btts:100*btts,hx,ax,confidence,hs,as,hp,ap,
+   homeForm:hvenue,awayForm:avenu};
 }
 function formHTML(s,label){
  if(!s.rows.length)return `<span class="formTeam"><b>${label}:</b> —</span>`;
@@ -151,32 +190,31 @@ function dateOnlyMinusOne(iso){
 }
 
 async function loadFixtures(){
- const date=document.getElementById('date').value,status=document.getElementById('status');
+ const date=document.getElementById('date').value;
+ const slug=document.getElementById('league').value;
+ const leagueName=LEAGUE_NAMES[slug]||slug;
+ const status=document.getElementById('status');
  const results=document.getElementById('results'),list=document.getElementById('fixtureList');
  const summary=document.getElementById('summary'),btn=document.getElementById('findBtn');
  results.style.display='none';summary.style.display='none';list.innerHTML='';
  if(!date){status.className='status error';status.textContent='Please choose a date.';return}
- btn.disabled=true;status.className='status';status.textContent='⏳ Loading fixtures, standings and recent form…';
+ btn.disabled=true;status.className='status';status.textContent=`⏳ Loading ${leagueName} fixtures, standings and recent form…`;
  try{
+   const {base:BASE,stand:STAND}=leagueUrls(slug);
    const day=await getJSON(`${BASE}?dates=${ymd(date)}`);
    const fixtures=events(day);
    if(!fixtures.length){
-     status.className='status error';status.textContent=`No Premier League fixture was returned for ${date}.`;return;
+     status.className='status error';status.textContent=`No ${leagueName} fixture was returned for ${date}.`;return;
    }
 
    let standingData={};
    try{standingData=await getJSON(STAND)}catch(e){}
    const positions=positionMap(standingData);
+   status.textContent=`✅ ${fixtures.length} fixture(s) found. ⏳ Loading recent ${leagueName} results…`;
 
-   status.textContent=`✅ ${fixtures.length} fixture(s) found. ⏳ Loading recent results…`;
-
-   // ESPN's soccer team-schedule endpoint can return an empty history on some
-   // current requests. Use the public Premier League scoreboard instead and
-   // pull the calendar year with a larger limit, then filter to completed
-   // matches before the selected fixture date.
    const selectedYear=Number(date.slice(0,4));
    const years=[selectedYear];
-   if(selectedYear===2027)years.unshift(2026);
+   if(selectedYear>2020)years.unshift(selectedYear-1);
    const yearData=await Promise.all(years.map(async y=>{
      try{
        const d=await getJSON(`${BASE}?dates=${y}&limit=500`);
@@ -192,7 +230,7 @@ async function loadFixtures(){
 
    summary.style.display='block';
    summary.innerHTML=`<h2>📊 Today's GoalMind summary</h2>
-   <div class="small"><b>${predictions.length}</b> fixtures · ranked by model confidence · recent form window: up to 8 completed league matches per team.</div>`;
+   <div class="small"><b>${predictions.length}</b> ${leagueName} fixtures · ranked by model confidence · recent form window: up to 8 completed matches per team.</div>`;
 
    results.style.display='block';
    list.innerHTML=predictions.map((x,i)=>{
@@ -204,8 +242,11 @@ async function loadFixtures(){
        <div class="teams">${t.home.team.displayName} 🆚 ${t.away.team.displayName}</div>
        <div class="small">League position: ${posH||'—'} vs ${posA||'—'}</div>
        <div class="form"><span class="small">Recent form:</span> ${formHTML(p.hs,t.home.team.shortDisplayName||t.home.team.displayName)} ${formHTML(p.as,t.away.team.shortDisplayName||t.away.team.displayName)}</div>
+       <div class="small" style="margin-top:6px">🏠 Home form: ${p.homeForm.rows.length?p.homeForm.rows.map(x=>x.result).join(' '):'—'} &nbsp; ✈️ Away form: ${p.awayForm.rows.length?p.awayForm.rows.map(x=>x.result).join(' '):'—'}</div>
        <div class="pred">
          <div class="score">🎯 GoalMind: ${p.score}</div>
+         <div class="small" style="margin-top:6px">Top correct scores: <b>${p.topScores.join(' · ')}</b></div>
+         <div class="pick"><input type="checkbox" ${isPicked(m.id)?'checked':''} onchange="togglePick('${m.id}')"> ⭐ My Pick</div>
          <div class="grid">
            <div class="prob"><div>Home</div><div class="num">${p.H.toFixed(0)}%</div></div>
            <div class="prob"><div>Draw</div><div class="num">${p.D.toFixed(0)}%</div></div>
@@ -223,10 +264,20 @@ async function loadFixtures(){
    }).join('');
 
    status.className='status ok';
-   status.textContent=`✅ ${fixtures.length} fixture(s) found and V2 predictions calculated.`;
+   status.textContent=`✅ ${fixtures.length} ${leagueName} fixture(s) found and V3 predictions calculated.`;
  }catch(e){
    status.className='status error';status.textContent='❌ '+e.message+'\\nPlease try again.';
  }finally{btn.disabled=false}
+}
+
+function isPicked(id){
+ const picks=JSON.parse(localStorage.getItem('goalmind_picks')||'[]');
+ return picks.includes(String(id));
+}
+function togglePick(id){
+ const key=String(id); let picks=JSON.parse(localStorage.getItem('goalmind_picks')||'[]');
+ if(picks.includes(key)) picks=picks.filter(x=>x!==key); else picks.push(key);
+ localStorage.setItem('goalmind_picks',JSON.stringify(picks));
 }
 </script>
 
