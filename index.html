@@ -33,7 +33,7 @@ button:disabled{opacity:.6}
 .metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .metric{background:#fff;border-radius:8px;padding:9px}.metric b{display:block;font-size:12px;color:#667085;margin-bottom:3px}
 .form{margin-top:9px;font-weight:700;letter-spacing:1px;display:flex;flex-wrap:wrap;gap:10px}.formTeam{white-space:nowrap}.w{color:#198754}.d{color:#b77900}.l{color:#c0392b}
-.small{font-size:12px;color:#667085;line-height:1.45}.pick{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px}.pick input{width:auto}.footer{text-align:center;font-size:12px;color:#667085;padding:8px 0 25px}
+.small{font-size:12px;color:#667085;line-height:1.45}.best-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.best-item{background:#f5f8ff;border-radius:10px;padding:12px}.best-item b{display:block;font-size:12px;color:#667085;margin-bottom:4px}.best-score{font-size:20px;font-weight:800}.pick{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px}.pick input{width:auto}.footer{text-align:center;font-size:12px;color:#667085;padding:8px 0 25px}
 </style>
 </head>
 <body>
@@ -66,6 +66,14 @@ button:disabled{opacity:.6}
 <div id="status" class="status">Choose a date and tap Find Fixtures.</div>
 </div>
 
+<div class="card">
+<h2>🔥 Best of the Day</h2>
+<div class="small">Scan all 16 supported leagues for the selected date and show the strongest model signals in one place.</div>
+<button id="bestBtn" onclick="bestOfDay()">🔥 Find Best of Day</button>
+<div id="bestStatus" class="status">Choose a date, then tap Find Best of Day.</div>
+<div id="bestResults" style="display:none"></div>
+</div>
+
 <div id="summary" class="card" style="display:none"></div>
 <div id="results" class="card" style="display:none">
 <h2>🎯 GoalMind V3 Predictions</h2>
@@ -75,8 +83,8 @@ button:disabled{opacity:.6}
 <div class="card">
 <h3>🚀 What's new in GoalMind V3</h3>
 <div class="small">
-<b>🌍 16 leagues</b> · <b>🎯 top 3 correct scores</b> · <b>🏠 home/away form</b> ·
-<b>📈 goals trends</b> · <b>⭐ My Picks</b> · <b>🔥 daily ranking</b>
+<b>🌍 16 leagues</b> · <b>🔥 Best of the Day</b> · <b>🎯 top 3 correct scores</b> ·
+<b>🏠 home/away form</b> · <b>📈 goals trends</b> · <b>⭐ My Picks</b> · <b>🔥 daily ranking</b>
 </div>
 <p class="small">The model uses recent completed matches, venue-specific form where available, expected goals and league position. Percentages are statistical estimates, not guarantees or betting advice.</p>
 </div>
@@ -187,6 +195,91 @@ function formHTML(s,label){
 function dateOnlyMinusOne(iso){
  const d=new Date(iso+'T12:00:00'); d.setDate(d.getDate()-1);
  return d.toISOString().slice(0,10).replaceAll('-','');
+}
+
+
+async function analyseLeagueForDate(slug,date){
+  const {base:BASE,stand:STAND}=leagueUrls(slug);
+  let day;
+  try{ day=await getJSON(`${BASE}?dates=${ymd(date)}`); }catch(e){ return []; }
+  const fixtures=events(day);
+  if(!fixtures.length) return [];
+  let standingData={};
+  try{standingData=await getJSON(STAND)}catch(e){}
+  const positions=positionMap(standingData);
+  const selectedYear=Number(date.slice(0,4));
+  const years=[selectedYear];
+  if(selectedYear>2020)years.unshift(selectedYear-1);
+  const yearData=await Promise.all(years.map(async y=>{
+    try{return events(await getJSON(`${BASE}?dates=${y}&limit=500`));}catch(e){return []}
+  }));
+  const all=[...new Map(yearData.flat().map(x=>[x.id,x])).values()];
+  const cutoff=date+'T00:00:00';
+  return fixtures.map(m=>{
+    const t=teams(m);
+    if(!t.home||!t.away)return null;
+    return {slug,league:LEAGUE_NAMES[slug]||slug,m,t,p:predict(t.home,t.away,all,positions,cutoff)};
+  }).filter(Boolean);
+}
+
+async function bestOfDay(){
+  const date=document.getElementById('date').value;
+  const status=document.getElementById('bestStatus');
+  const out=document.getElementById('bestResults');
+  const btn=document.getElementById('bestBtn');
+  if(!date){status.className='status error';status.textContent='Please choose a date first.';return}
+  btn.disabled=true; out.style.display='none'; out.innerHTML='';
+  status.className='status'; status.textContent='⏳ Scanning 16 leagues for fixtures…';
+  try{
+    const slugs=Object.keys(LEAGUE_NAMES);
+    const batches=[];
+    for(let i=0;i<slugs.length;i+=4){
+      const batch=await Promise.all(slugs.slice(i,i+4).map(slug=>analyseLeagueForDate(slug,date)));
+      batches.push(...batch);
+      status.textContent=`⏳ Scanned ${Math.min(i+4,slugs.length)} of ${slugs.length} leagues…`;
+    }
+    const all=batches.flat();
+    if(!all.length){
+      status.className='status error';status.textContent='No fixtures were returned for the selected date across the supported leagues.';return;
+    }
+    const by1x2=[...all].sort((a,b)=>Math.max(b.p.H,b.p.D,b.p.A)-Math.max(a.p.H,a.p.D,a.p.A));
+    const home=[...all].sort((a,b)=>b.p.H-a.p.H)[0];
+    const away=[...all].sort((a,b)=>b.p.A-a.p.A)[0];
+    const draw=[...all].sort((a,b)=>b.p.D-a.p.D)[0];
+    const over=[...all].sort((a,b)=>b.p.over-a.p.over)[0];
+    const under=[...all].sort((a,b)=>b.p.under-a.p.under)[0];
+    const btts=[...all].sort((a,b)=>b.p.btts-a.p.btts)[0];
+    const top=by1x2.slice(0,8);
+
+    const card=x=>{
+      const dt=new Date(x.m.date);
+      return `<div class="best-item">
+        <b>${x.league} · ${dt.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}</b>
+        <div>${x.t.home.team.displayName} vs ${x.t.away.team.displayName}</div>
+        <div class="best-score">🎯 ${x.p.score}</div>
+        <div class="small">Home ${x.p.H.toFixed(0)}% · Draw ${x.p.D.toFixed(0)}% · Away ${x.p.A.toFixed(0)}%</div>
+      </div>`;
+    };
+
+    out.innerHTML=`<div class="small"><b>${all.length} fixtures</b> found across the supported leagues.</div>
+      <div class="best-grid">
+        <div class="best-item"><b>🎯 Highest 1X2 confidence</b>${card(by1x2[0])}</div>
+        <div class="best-item"><b>🏠 Strongest home probability</b>${card(home)}</div>
+        <div class="best-item"><b>✈️ Strongest away probability</b>${card(away)}</div>
+        <div class="best-item"><b>🤝 Strongest draw probability</b>${card(draw)}</div>
+        <div class="best-item"><b>⚽ Highest Over 2.5</b>${card(over)}<div class="small">${over.p.over.toFixed(0)}% Over 2.5</div></div>
+        <div class="best-item"><b>🥅 Highest Under 2.5</b>${card(under)}<div class="small">${under.p.under.toFixed(0)}% Under 2.5</div></div>
+        <div class="best-item"><b>🤝 Highest BTTS</b>${card(btts)}<div class="small">${btts.p.btts.toFixed(0)}% BTTS</div></div>
+      </div>
+      <h3 style="margin-top:18px">🔥 Top 8 model-confidence fixtures</h3>
+      <div class="best-grid">${top.map(card).join('')}</div>
+      <p class="small" style="margin-top:12px">These are model statistics, not guarantees or betting advice.</p>`;
+    out.style.display='block';
+    status.className='status ok';
+    status.textContent=`✅ Best of the Day complete: ${all.length} fixtures analysed.`;
+  }catch(e){
+    status.className='status error';status.textContent='❌ '+e.message;
+  }finally{btn.disabled=false}
 }
 
 async function loadFixtures(){
