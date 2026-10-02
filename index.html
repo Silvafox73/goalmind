@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>GoalMind Football Predictor</title>
+<style>
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}
+header{background:#111827;color:#fff;text-align:center;padding:22px 15px}h1{margin:0;font-size:32px}.sub{margin-top:6px;opacity:.82}
+main{max-width:900px;margin:18px auto;padding:0 14px}.card{background:#fff;border-radius:15px;padding:18px;margin-bottom:16px;box-shadow:0 3px 14px #0001}
+label{font-weight:700;display:block;margin:10px 0 6px}select,input,button{width:100%;padding:13px;border-radius:9px;border:1px solid #ccd4df;font-size:16px}
+button{border:0;background:#1769e0;color:#fff;font-weight:700;margin-top:12px}.status{margin-top:12px;padding:12px;border-radius:9px;background:#eef4ff;white-space:pre-wrap}
+.ok{background:#eefbf1;color:#176b2b}.error{background:#fff0f0;color:#9b1c1c}.fixture{border:1px solid #dde3ea;border-radius:12px;padding:14px;margin:12px 0}
+.teams{font-size:19px;font-weight:700}.date{font-size:13px;color:#687386;margin-bottom:7px}.pred{background:#f5f8ff;border-radius:10px;padding:12px;margin-top:10px}
+.score{font-size:27px;font-weight:800}.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}.prob{background:#fff;border-radius:8px;padding:8px;text-align:center}.num{font-size:20px;font-weight:700}
+.small{font-size:12px;color:#667085;line-height:1.4}.footer{text-align:center;font-size:12px;color:#667085;padding:8px 0 25px}
+a{color:#1769e0}.hidden{display:none}.loading{opacity:.7}
+</style>
+</head>
+<body>
+<header><h1>⚽ GoalMind</h1><div class="sub">Free football score prediction engine</div></header>
+<main>
+<div class="card">
+<h2>GoalMind fixtures</h2>
+<label for="league">League</label>
+<select id="league"><option value="premier-league">🏴 Premier League</option></select>
+<label for="date">Date</label>
+<input id="date" type="date">
+<button id="findBtn" onclick="loadFixtures()">Find Fixtures & Predict</button>
+<div id="status" class="status">Choose a date and tap Find Fixtures.</div>
+</div>
+
+<div id="results" class="card hidden"><h2>🎯 GoalMind Predictions</h2><div id="fixtureList"></div></div>
+
+<div class="card"><h3>How GoalMind works</h3>
+<div class="small">GoalMind uses the current fixture list and each team's recent completed matches to produce a statistical score estimate. It is not a guarantee of the result.</div>
+</div>
+</main>
+<div class="footer">Data supplied by <a href="https://sportscore.com/" target="_blank" rel="dofollow">SportScore</a> · Free public sports data</div>
+
+<script>
+const API='https://sportscore.com/api/v1';
+function todayISO(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
+document.getElementById('date').value=todayISO();
+
+async function getJSON(path){
+ const r=await fetch(API+path,{cache:'no-store'});
+ const text=await r.text(); let data;
+ try{data=JSON.parse(text)}catch{throw new Error('The football data service returned an unexpected response.')}
+ if(!r.ok)throw new Error('Data service error '+r.status);
+ return data;
+}
+function listFrom(x){return Array.isArray(x)?x:(x?.matches||x?.fixtures||x?.events||x?.data||[])}
+function dateValue(m){return m?.time||m?.date||m?.utcDate||m?.kickoff||m?.scheduledAt||''}
+function homeName(m){return typeof m?.home==='string'?m.home:(m?.home?.name||m?.homeTeam?.name||m?.teams?.home?.name||'')}
+function awayName(m){return typeof m?.away==='string'?m.away:(m?.away?.name||m?.awayTeam?.name||m?.teams?.away?.name||'')}
+function score(m){
+ const s=m?.score||m?.scores||{};
+ const h=Number(s?.home_score??s?.home?.score??s?.home??s?.fullTime?.home??m?.home_score);
+ const a=Number(s?.away_score??s?.away?.score??s?.away??s?.fullTime?.away??m?.away_score);
+ return [h,a];
+}
+function finished(m){
+ const s=String(m?.status||m?.state||'').toLowerCase();
+ if(/finished|ft|ended|completed/.test(s))return true;
+ const [h,a]=score(m);return Number.isFinite(h)&&Number.isFinite(a)&&dateValue(m)&&new Date(dateValue(m))<new Date();
+}
+function slug(s){return String(s).toLowerCase().replace(/&/g,'and').replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'')}
+function factorial(n){let x=1;for(let i=2;i<=n;i++)x*=i;return x}
+function poisson(k,l){return Math.exp(-l)*Math.pow(l,k)/factorial(k)}
+
+function makePrediction(home,away,hMatches,aMatches){
+ function stats(ms,team){
+  const rows=listFrom(ms).filter(finished).sort((a,b)=>new Date(dateValue(b))-new Date(dateValue(a))).slice(0,8);
+  let gf=0,ga=0,pts=0,n=0;
+  rows.forEach(m=>{
+   const isHome=homeName(m).toLowerCase()===team.toLowerCase();
+   const [hg,ag]=score(m); if(!Number.isFinite(hg)||!Number.isFinite(ag))return;
+   const f=isHome?hg:ag,c=isHome?ag:hg;gf+=f;ga+=c;pts+=f>c?3:f===c?1:0;n++;
+  });
+  return {gf:n?gf/n:1.25,ga:n?ga/n:1.25,pts:n?pts/n:1.2,n};
+ }
+ const h=stats(hMatches,home),a=stats(aMatches,away);
+ let hx=1.50+(h.gf-a.ga)*.38+(h.pts-a.pts)*.08;
+ let ax=1.05+(a.gf-h.ga)*.36-(h.pts-a.pts)*.06;
+ hx=Math.max(.25,Math.min(3.5,hx));ax=Math.max(.20,Math.min(3.2,ax));
+ let hp=[],ap=[];for(let i=0;i<8;i++){hp[i]=poisson(i,hx);ap[i]=poisson(i,ax)}
+ let H=0,D=0,A=0,best=-1,bs=[0,0];
+ for(let i=0;i<8;i++)for(let j=0;j<8;j++){const p=hp[i]*ap[j];if(i>j)H+=p;else if(i===j)D+=p;else A+=p;if(p>best){best=p;bs=[i,j]}}
+ const total=H+D+A;
+ return {score:`${bs[0]} - ${bs[1]}`,H:H/total*100,D:D/total*100,A:A/total*100};
+}
+
+async function loadFixtures(){
+ const date=document.getElementById('date').value,status=document.getElementById('status');
+ const results=document.getElementById('results'),list=document.getElementById('fixtureList'),btn=document.getElementById('findBtn');
+ results.classList.add('hidden');list.innerHTML='';
+ if(!date){status.className='status error';status.textContent='Please choose a date.';return}
+ btn.disabled=true;btn.classList.add('loading');status.className='status';status.textContent='⏳ Loading the Premier League fixtures...';
+ try{
+   // Officially documented SportScore REST endpoint: fixtures for one UTC calendar day.
+   const fixtureData=await getJSON(`/fixtures/?sport=football&date=${encodeURIComponent(date)}&competition=premier-league&limit=200`);
+   const fixtures=listFrom(fixtureData).filter(m=>{
+     const d=new Date(dateValue(m)); if(isNaN(d))return false;
+     return d.toISOString().slice(0,10)===date;
+   });
+   results.classList.remove('hidden');
+   if(!fixtures.length){
+     status.className='status error';
+     status.textContent=`No Premier League fixture was returned by the data service for ${date}.`;
+     list.innerHTML='<p>This date should be checked against the official Premier League fixture list.</p>';
+     return;
+   }
+   status.className='status ok';status.textContent=`✅ ${fixtures.length} Premier League fixture(s) found for ${date}.`;
+   list.innerHTML='<div class="small">Calculating predictions from recent team results…</div>';
+   const cards=[];
+   for(const m of fixtures){
+     const h=homeName(m),a=awayName(m);
+     const [hm,am]=await Promise.all([
+       getJSON(`/team/?sport=football&slug=${encodeURIComponent(slug(h))}&limit=30`).catch(()=>({matches:[]})),
+       getJSON(`/team/?sport=football&slug=${encodeURIComponent(slug(a))}&limit=30`).catch(()=>({matches:[]}))
+     ]);
+     const p=makePrediction(h,a,hm,am);
+     const dt=new Date(dateValue(m));
+     cards.push(`<div class="fixture">
+       <div class="date">${isNaN(dt)?date:dt.toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'})}</div>
+       <div class="teams">${h} 🆚 ${a}</div>
+       <div class="pred">
+         <div class="score">🎯 GoalMind: ${p.score}</div>
+         <div class="grid">
+           <div class="prob"><div>Home</div><div class="num">${p.H.toFixed(0)}%</div></div>
+           <div class="prob"><div>Draw</div><div class="num">${p.D.toFixed(0)}%</div></div>
+           <div class="prob"><div>Away</div><div class="num">${p.A.toFixed(0)}%</div></div>
+         </div>
+       </div>
+     </div>`);
+   }
+   list.innerHTML=cards.join('');
+ }catch(e){
+   status.className='status error';status.textContent='❌ '+e.message;
+ }finally{btn.disabled=false;btn.classList.remove('loading')}
+}
+</script>
+</body>
+</html>
