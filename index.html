@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>GoalMind V4.1</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#111827">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="GoalMind">
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f4f7fb;color:#172033}
+header{background:#111827;color:#fff;text-align:center;padding:22px 15px}
+h1{margin:0;font-size:32px}.sub{margin-top:6px;opacity:.82}
+main{max-width:920px;margin:18px auto;padding:0 14px}
+.card{background:#fff;border-radius:15px;padding:18px;margin-bottom:16px;box-shadow:0 3px 14px #0001}
+label{font-weight:700;display:block;margin:10px 0 6px}
+select,input,button{width:100%;padding:13px;border-radius:9px;border:1px solid #ccd4df;font-size:16px}
+button{border:0;background:#1769e0;color:#fff;font-weight:700;margin-top:12px}
+button:disabled{opacity:.6}
+.status{margin-top:12px;padding:12px;border-radius:9px;background:#eef4ff;white-space:pre-wrap}
+.ok{background:#eefbf1;color:#176b2b}.error{background:#fff0f0;color:#9b1c1c}
+.fixture{border:1px solid #dde3ea;border-radius:12px;padding:14px;margin:12px 0}
+.rank{font-size:12px;font-weight:700;color:#1769e0;margin-bottom:5px}
+.teams{font-size:19px;font-weight:700}.date{font-size:13px;color:#687386;margin-bottom:7px}
+.pred{background:#f5f8ff;border-radius:10px;padding:12px;margin-top:10px}
+.score{font-size:28px;font-weight:800}.grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px}
+.prob{background:#fff;border-radius:8px;padding:8px;text-align:center}.num{font-size:20px;font-weight:700}
+.metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+.metric{background:#fff;border-radius:8px;padding:9px}.metric b{display:block;font-size:12px;color:#667085;margin-bottom:3px}
+.form{margin-top:9px;font-weight:700;letter-spacing:1px;display:flex;flex-wrap:wrap;gap:10px}.formTeam{white-space:nowrap}.w{color:#198754}.d{color:#b77900}.l{color:#c0392b}
+.small{font-size:12px;color:#667085;line-height:1.45}.signal-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.signal{background:#f5f8ff;border-radius:10px;padding:12px}.signal b{display:block;font-size:12px;color:#667085;margin-bottom:4px}.signal .big{font-size:20px;font-weight:800}.mini{font-size:12px;color:#667085;margin-top:4px}.best-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}.best-item{background:#f5f8ff;border-radius:10px;padding:12px}.best-item b{display:block;font-size:12px;color:#667085;margin-bottom:4px}.best-score{font-size:20px;font-weight:800}.pick{display:flex;align-items:center;gap:8px;margin-top:10px;font-size:13px}.pick input{width:auto}.footer{text-align:center;font-size:12px;color:#667085;padding:8px 0 25px}
+</style>
+</head>
+<body>
+<header><h1>⚽ GoalMind V4.1</h1><div class="sub">Football prediction dashboard</div></header>
+<main>
+<div class="card">
+<h2>Find fixtures</h2>
+<label for="league">League</label>
+<select id="league">
+<option value="eng.1">🏴 Premier League</option>
+<option value="eng.2">🏴 Championship</option>
+<option value="eng.3">🏴 League One</option>
+<option value="eng.4">🏴 League Two</option>
+<option value="esp.1">🇪🇸 La Liga</option>
+<option value="ger.1">🇩🇪 Bundesliga</option>
+<option value="ita.1">🇮🇹 Serie A</option>
+<option value="fra.1">🇫🇷 Ligue 1</option>
+<option value="ned.1">🇳🇱 Eredivisie</option>
+<option value="sco.1">🏴 Scottish Premiership</option>
+<option value="por.1">🇵🇹 Primeira Liga</option>
+<option value="bel.1">🇧🇪 Belgian Pro League</option>
+<option value="tur.1">🇹🇷 Turkish Super Lig</option>
+<option value="usa.1">🇺🇸 MLS</option>
+<option value="uefa.champions">🏆 Champions League</option>
+<option value="uefa.europa">🏆 Europa League</option>
+</select>
+<label for="date">Date</label>
+<input id="date" type="date">
+<button id="findBtn" onclick="loadFixtures()">Find Fixtures & Predict</button>
+<div id="status" class="status">Choose a date and tap Find Fixtures.</div>
+</div>
+
+<div class="card">
+<h2>🔥 Best Model Signals</h2>
+<div class="small">Scan all 16 supported leagues for the selected date and bring the strongest statistical signals together.</div>
+<button id="bestBtn" onclick="bestOfDay()">🔥 Scan All Leagues</button>
+<div id="bestStatus" class="status">Choose a date, then tap Scan All Leagues.</div>
+<div id="bestResults" style="display:none"></div>
+</div>
+
+<div class="card">
+<h2>⭐ My Picks</h2>
+<div class="small">Your manually selected fixtures are saved on this device.</div>
+<div id="pickSummary" class="status">No picks saved yet.</div>
+<button onclick="clearPicks()" style="background:#6b7280">Clear My Picks</button>
+</div>
+
+<div id="summary" class="card" style="display:none"></div>
+<div id="results" class="card" style="display:none">
+<h2>🎯 GoalMind V4.1 Predictions</h2>
+<div id="fixtureList"></div>
+</div>
+
+<div class="card">
+<h3>🚀 What's new in GoalMind V4.1</h3>
+<div class="small">
+<b>🌍 16 leagues</b> · <b>🔥 all-league scan</b> · <b>🎯 top 3 correct scores</b> ·
+<b>🏠 home/away form</b> · <b>📈 goal trends</b> · <b>⭐ My Picks</b> · <b>📊 model signals</b>
+</div>
+<p class="small">The model uses recent completed matches, venue-specific form where available, expected goals and league position. Percentages are statistical estimates, not guarantees or betting advice.</p>
+</div>
+</main>
+<div class="footer">Football data supplied by <a href="https://sportscore.com/" rel="dofollow">SportScore</a>.</div>
+
+<script>
+const API='https://sportscore.com/api/v1';
+const WIDGET='https://sportscore.com/api/widget';
+const LEAGUE_NAMES={
+ 'eng.1':'Premier League','eng.2':'Championship','eng.3':'League One','eng.4':'League Two',
+ 'esp.1':'La Liga','ger.1':'Bundesliga','ita.1':'Serie A','fra.1':'Ligue 1','ned.1':'Eredivisie',
+ 'sco.1':'Scottish Premiership','por.1':'Primeira Liga','bel.1':'Belgian Pro League',
+ 'tur.1':'Turkish Super Lig','usa.1':'MLS','uefa.champions':'Champions League','uefa.europa':'Europa League'
+};
+const SPORT_LEAGUE_WORDS={
+ 'eng.1':['premier league','english premier league'], 'eng.2':['championship','english football league championship'],
+ 'eng.3':['league one','english football league one'], 'eng.4':['league two','english football league two'],
+ 'esp.1':['la liga','laliga','spanish la liga'], 'ger.1':['bundesliga','german bundesliga'],
+ 'ita.1':['serie a','italian serie a'], 'fra.1':['ligue 1','french ligue 1'], 'ned.1':['eredivisie'],
+ 'sco.1':['scottish premiership'], 'por.1':['primeira liga'], 'bel.1':['belgian pro league'],
+ 'tur.1':['turkish super lig','super lig'], 'usa.1':['mls','major league soccer'],
+ 'uefa.champions':['champions league','uefa champions league'], 'uefa.europa':['europa league','uefa europa league']
+};
+const COMP_SLUGS={
+ 'eng.1':'premier-league','eng.2':'championship','eng.3':'league-one','eng.4':'league-two',
+ 'esp.1':'la-liga','ger.1':'bundesliga','ita.1':'serie-a','fra.1':'ligue-1','ned.1':'eredivisie',
+ 'sco.1':'scottish-premiership','por.1':'primeira-liga','bel.1':'belgian-pro-league',
+ 'tur.1':'turkish-super-lig','usa.1':'mls','uefa.champions':'uefa-champions-league','uefa.europa':'uefa-europa-league'
+};
+const cache={teams:new Map(),schedules:new Map(),days:new Map(),stands:new Map()};
+function todayISO(){const d=new Date();d.setMinutes(d.getMinutes()-d.getTimezoneOffset());return d.toISOString().slice(0,10)}
+document.getElementById('date').value=todayISO();
+async function getJSON(url){const r=await fetch(url,{cache:'no-store'});if(!r.ok)throw new Error('SportScore returned HTTP '+r.status);return await r.json()}
+function events(x){return Array.isArray(x?.events)?x.events:Array.isArray(x?.matches)?x.matches:[]}
+function norm(s){return String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()}
+function leagueMatch(m,slug){
+ const words=SPORT_LEAGUE_WORDS[slug]||[];
+ const vals=[m?.competition,m?.competition_name,m?.league,m?.league_name,m?.tournament,m?.tournament_name,m?.competitionSlug,m?.competition_slug,m?.tournamentSlug].map(norm).join(' | ');
+ return words.some(w=>vals.includes(norm(w)));
+}
+function teamName(t){return typeof t==='string'?t:(t?.name||t?.displayName||t?.shortName||'')}
+function teamSlug(t){return typeof t==='object'?(t?.slug||t?.team_slug||''):''}
+function matchTeams(m){
+ const h=m?.home||m?.homeTeam||m?.home_team||m?.home_team_name;
+ const a=m?.away||m?.awayTeam||m?.away_team||m?.away_team_name;
+ return {home:{name:teamName(h),slug:teamSlug(h)},away:{name:teamName(a),slug:teamSlug(a)}}
+}
+function matchDate(m){return m?.time||m?.date||m?.start_time||m?.kickoff||m?.startTime||null}
+function finished(m){const s=norm(m?.status||m?.status_text||m?.state||'');return s.includes('finished')||s==='ft'||s.includes('full time')||Number(m?.home_score)>-1&&Number(m?.away_score)>-1&&s.includes('final')}
+function goals(x){const n=Number(x);return Number.isFinite(n)?n:null}
+function scoreOf(m,side){
+ const v=side==='home'?(m?.home_score??m?.homeScore):(m?.away_score??m?.awayScore);
+ if(typeof v==='object')return goals(v?.current??v?.display??v?.normaltime??v?.score);
+ return goals(v)
+}
+function factorial(n){let x=1;for(let i=2;i<=n;i++)x*=i;return x}
+function poisson(k,l){return Math.exp(-l)*Math.pow(l,k)/factorial(k)}
+async function findTeamSlug(name){
+ const key=norm(name);if(cache.teams.has(key))return cache.teams.get(key);
+ try{const d=await getJSON(`${API}/search/?sport=football&q=${encodeURIComponent(name)}&limit=8`);const arr=[...(d?.teams||[]),...(d?.results?.teams||[]),...(d?.results||[])];
+   let hit=arr.find(x=>norm(x?.name||x?.team?.name)===key)||arr[0];
+   const slug=hit?.slug||hit?.team?.slug||'';cache.teams.set(key,slug);return slug
+ }catch(e){cache.teams.set(key,'');return ''}
+}
+async function teamSchedule(name,slug,cutoff){
+ const key=norm(name)+'|'+cutoff.slice(0,10);if(cache.schedules.has(key))return cache.schedules.get(key);
+ let s=slug||await findTeamSlug(name), raw=[];
+ if(!s){cache.schedules.set(key,[]);return []}
+ try{const d=await getJSON(`${WIDGET}/team/?sport=football&slug=${encodeURIComponent(s)}&limit=30`);raw=events(d)}catch(e){raw=[]}
+ const cut=new Date(cutoff);
+ const rows=raw.map(m=>{const dt=matchDate(m);if(!dt||new Date(dt)>=cut)return null;const ht=teamName(m?.home||m?.homeTeam||m?.home_team),at=teamName(m?.away||m?.awayTeam||m?.away_team);const hs=scoreOf(m,'home'),as=scoreOf(m,'away');if(hs===null||as===null)return null;const isHome=norm(ht)===norm(name);return {date:dt,gf:isHome?hs:as,ga:isHome?as:hs,pts:(isHome?hs>as:as>hs)?3:(hs===as?1:0),result:(isHome?hs>as:as>hs)?'W':hs===as?'D':'L',venue:isHome?'home':'away',competition:m?.competition||m?.league||m?.tournament||''};}).filter(Boolean).filter(r=>!r.competition||true).sort((a,b)=>new Date(b.date)-new Date(a.date)).slice(0,12);
+ cache.schedules.set(key,rows);return rows
+}
+async function stats(name,slug,cutoff){
+ const rows=await teamSchedule(name,slug,cutoff), homeRows=rows.filter(x=>x.venue==='home'),awayRows=rows.filter(x=>x.venue==='away');
+ const calc=rs=>{let gf=0,ga=0,pts=0,cs=0,btts=0,o25=0;rs.forEach(x=>{gf+=x.gf;ga+=x.ga;pts+=x.pts;if(x.ga===0)cs++;if(x.gf>0&&x.ga>0)btts++;if(x.gf+x.ga>=3)o25++});return {rows:rs,gf:rs.length?gf/rs.length:1.25,ga:rs.length?ga/rs.length:1.25,pts:rs.length?pts/rs.length:1.2,cs:rs.length?cs/rs.length:0,btts:rs.length?btts/rs.length:0,o25:rs.length?o25/rs.length:0}};
+ const allS=calc(rows),hs=calc(homeRows.slice(0,5)),as=calc(awayRows.slice(0,5));return {...allS,home:hs,away:as}
+}
+async function positionMap(slug){const out=new Map();try{const d=await getJSON(`${WIDGET}/standings/?sport=football&slug=${encodeURIComponent(COMP_SLUGS[slug]||slug)}`);const entries=d?.standings||d?.rows||d?.table||d?.data?.standings||d?.data?.rows||[];for(const e of entries){const id=e?.team?.id||e?.id;const pos=e?.rank||e?.position||e?.pos;if(id&&Number.isFinite(Number(pos)))out.set(String(id),Number(pos))}}catch(e){}return out}
+async function predict(h,a,positions,cutoff){
+ const [hs,as]=await Promise.all([stats(h.name,h.slug,cutoff),stats(a.name,a.slug,cutoff)]);
+ const hp=positions.get(String(h.id))||10,ap=positions.get(String(a.id))||10;
+ const hvenue=hs.home.rows.length>=2?hs.home:hs,avenu=as.away.rows.length>=2?as.away:as;
+ const positionEdge=Math.max(-.25,Math.min(.25,(ap-hp)*.018));
+ let hx=1.50+(hvenue.gf-avenu.ga)*.34+(hvenue.pts-avenu.pts)*.07+positionEdge;
+ let ax=1.06+(avenu.gf-hvenue.ga)*.33-(hvenue.pts-avenu.pts)*.05-positionEdge*.5;
+ hx=Math.max(.25,Math.min(3.5,hx));ax=Math.max(.20,Math.min(3.2,ax));
+ let hpv=[],apv=[];for(let i=0;i<9;i++){hpv[i]=poisson(i,hx);apv[i]=poisson(i,ax)}
+ let H=0,D=0,A=0,over=0,btts=0,scorePairs=[];for(let i=0;i<9;i++)for(let j=0;j<9;j++){const p=hpv[i]*apv[j];if(i>j)H+=p;else if(i===j)D+=p;else A+=p;if(i+j>=3)over+=p;if(i>0&&j>0)btts+=p;scorePairs.push({i,j,p})}
+ scorePairs.sort((a,b)=>b.p-a.p);const total=H+D+A;H/=total;D/=total;A/=total;over/=total;btts/=total;const max=Math.max(H,D,A);const confidence=max>=.55?'High':max>=.45?'Medium':'Low';const topScores=scorePairs.slice(0,3).map(x=>`${x.i}-${x.j}`);
+ return {score:`${scorePairs[0].i} - ${scorePairs[0].j}`,topScores,H:100*H,D:100*D,A:100*A,over:100*over,under:100*(1-over),btts:100*btts,hx,ax,confidence,hs,as,hp,ap,homeForm:hvenue,awayForm:avenu}
+}
+function ymd(s){return s.replaceAll('-','')}
+function formHTML(s,label){if(!s.rows.length)return `<span class="formTeam"><b>${label}:</b> —</span>`;return `<span class="formTeam"><b>${label}:</b> ${s.rows.map(x=>`<span class="${x.result==='W'?'w':x.result==='D'?'d':'l'}">${x.result}</span>`).join(' ')}</span>`}
+function dateOnlyMinusOne(iso){const d=new Date(iso+'T12:00:00');d.setDate(d.getDate()-1);return d.toISOString().slice(0,10).replaceAll('-','')}
+async function dayFixtures(date,slug){const key=date+'|'+slug;if(cache.days.has(key))return cache.days.get(key);const comp=COMP_SLUGS[slug]||slug;const d=await getJSON(`${API}/fixtures/?sport=football&date=${encodeURIComponent(date)}&competition=${encodeURIComponent(comp)}&limit=200`);const a=events(d);cache.days.set(key,a);return a}
+function filteredFixtures(all,slug){return all.filter(m=>leagueMatch(m,slug))}
+async function analyseLeagueForDate(slug,date){
+ let all;try{all=await dayFixtures(date,slug)}catch(e){return []}let fixtures=all.length?all:filteredFixtures(await dayFixtures(date),slug);if(!fixtures.length)return [];
+ const positions=await positionMap(slug),cutoff=date+'T00:00:00';
+ const out=[];for(const m of fixtures){const t=matchTeams(m);if(!t.home.name||!t.away.name)continue;const [hs,as]=await Promise.all([findTeamSlug(t.home.name),findTeamSlug(t.away.name)]);t.home.slug=hs;t.away.slug=as;const p=await predict(t.home,t.away,positions,cutoff);out.push({slug,league:LEAGUE_NAMES[slug]||slug,m,t,p})}return out
+}
+async function bestOfDay(){
+ const date=document.getElementById('date').value,status=document.getElementById('bestStatus'),out=document.getElementById('bestResults'),btn=document.getElementById('bestBtn');if(!date){status.className='status error';status.textContent='Please choose a date first.';return}btn.disabled=true;out.style.display='none';out.innerHTML='';status.className='status';status.textContent='⏳ Scanning 16 leagues using SportScore…';try{const slugs=Object.keys(LEAGUE_NAMES),all=[];for(let i=0;i<slugs.length;i+=4){const batch=await Promise.all(slugs.slice(i,i+4).map(slug=>analyseLeagueForDate(slug,date)));all.push(...batch.flat());status.textContent=`⏳ Scanned ${Math.min(i+4,slugs.length)} of ${slugs.length} leagues…`}if(!all.length){status.className='status error';status.textContent='No fixtures were returned for the selected date across the supported leagues.';return}const confidence=x=>Math.max(x.p.H,x.p.D,x.p.A),top=[...all].sort((a,b)=>confidence(b)-confidence(a)).slice(0,10),home=[...all].sort((a,b)=>b.p.H-a.p.H)[0],away=[...all].sort((a,b)=>b.p.A-a.p.A)[0],draw=[...all].sort((a,b)=>b.p.D-a.p.D)[0],over=[...all].sort((a,b)=>b.p.over-a.p.over)[0],under=[...all].sort((a,b)=>b.p.under-a.p.under)[0],btts=[...all].sort((a,b)=>b.p.btts-a.p.btts)[0],high=all.filter(x=>confidence(x)>=60).length,avgHome=all.reduce((n,x)=>n+x.p.H,0)/all.length;
+ const label=x=>`${x.t.home.name} vs ${x.t.away.name}`,time=x=>new Date(matchDate(x.m)).toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}),signal=(title,x,value)=>`<div class="signal"><b>${title}</b><div>${x.league} · ${time(x)}</div><div class="big">${value}</div><div class="mini">${label(x)} · ${x.p.score}</div></div>`,card=x=>`<div class="best-item"><b>${x.league} · ${time(x)}</b><div>${label(x)}</div><div class="best-score">🎯 ${x.p.score}</div><div class="small">Home ${x.p.H.toFixed(0)}% · Draw ${x.p.D.toFixed(0)}% · Away ${x.p.A.toFixed(0)}%</div><div class="small">Top scores: ${x.p.topScores.join(' · ')}</div></div>`;
+ out.innerHTML=`<div class="small"><b>${all.length} fixtures</b> analysed across the 16 supported leagues.</div><div class="signal-grid">${signal('🎯 Strongest 1X2 model signal',top[0],confidence(top[0]).toFixed(0)+'%')}${signal('🏠 Strongest home signal',home,home.p.H.toFixed(0)+'%')}${signal('✈️ Strongest away signal',away,away.p.A.toFixed(0)+'%')}${signal('🤝 Strongest draw signal',draw,draw.p.D.toFixed(0)+'%')}${signal('⚽ Highest Over 2.5 signal',over,over.p.over.toFixed(0)+'%')}${signal('🥅 Highest Under 2.5 signal',under,under.p.under.toFixed(0)+'%')}${signal('🤝 Highest BTTS signal',btts,btts.p.btts.toFixed(0)+'%')}<div class="signal"><b>📊 Daily model snapshot</b><div>${high} fixtures at 60%+ 1X2 probability</div><div class="big">${avgHome.toFixed(0)}% avg home</div><div class="mini">Across all returned fixtures</div></div></div><h3 style="margin-top:18px">🔥 Top 10 model-confidence fixtures</h3><div class="best-grid">${top.map(card).join('')}</div><p class="small" style="margin-top:12px">These are statistical model outputs. They are not guarantees, betting advice, or a recommendation to place a wager.</p>`;out.style.display='block';status.className='status ok';status.textContent=`✅ Scan complete: ${all.length} fixtures analysed across 16 leagues using SportScore.`
+ }catch(e){status.className='status error';status.textContent='❌ '+e.message}finally{btn.disabled=false}}
+async function loadFixtures(){
+ const date=document.getElementById('date').value,slug=document.getElementById('league').value,leagueName=LEAGUE_NAMES[slug]||slug,status=document.getElementById('status'),results=document.getElementById('results'),list=document.getElementById('fixtureList'),summary=document.getElementById('summary'),btn=document.getElementById('findBtn');results.style.display='none';summary.style.display='none';list.innerHTML='';if(!date){status.className='status error';status.textContent='Please choose a date.';return}btn.disabled=true;status.className='status';status.textContent=`⏳ Loading ${leagueName} fixtures and recent form from SportScore…`;try{const all=await dayFixtures(date,slug),fixtures=all.length?all:filteredFixtures(await dayFixtures(date),slug);if(!fixtures.length){status.className='status error';status.textContent=`No ${leagueName} fixture was returned for ${date}.`;return}status.textContent=`✅ ${fixtures.length} fixture(s) found. ⏳ Loading recent team results…`;const positions=await positionMap(slug),cutoff=date+'T00:00:00',predictions=[];for(const m of fixtures){const t=matchTeams(m);if(!t.home.name||!t.away.name)continue;t.home.slug=await findTeamSlug(t.home.name);t.away.slug=await findTeamSlug(t.away.name);predictions.push({m,t,p:await predict(t.home,t.away,positions,cutoff)})}predictions.sort((x,y)=>Math.max(y.p.H,y.p.D,y.p.A)-Math.max(x.p.H,x.p.D,x.p.A));summary.style.display='block';summary.innerHTML=`<h2>📊 Today's GoalMind summary</h2><div class="small"><b>${predictions.length}</b> ${leagueName} fixtures · ranked by model confidence · recent form window: up to 12 completed matches per team.</div>`;predictions.forEach(x=>{const m=x.m,t=x.t,p=x.p;const div=document.createElement('div');div.className='fixture';const dt=matchDate(m);div.innerHTML=`<div class="date">${new Date(dt).toLocaleString('en-GB',{dateStyle:'medium',timeStyle:'short'})}</div><div class="teams">${t.home.name} <span style="font-weight:400">vs</span> ${t.away.name}</div><div class="small">Recent form: ${formHTML(p.hs,'Home')} &nbsp; ${formHTML(p.as,'Away')}</div><div class="small">Home venue: ${formHTML(p.homeForm,'')} &nbsp; Away venue: ${formHTML(p.awayForm,'')}</div><div class="pred"><div class="score">🎯 GoalMind ${p.score}</div><div class="small">Top scores: ${p.topScores.join(' · ')}</div><div class="grid"><div class="prob"><div class="num">${p.H.toFixed(0)}%</div>Home</div><div class="prob"><div class="num">${p.D.toFixed(0)}%</div>Draw</div><div class="prob"><div class="num">${p.A.toFixed(0)}%</div>Away</div></div><div class="small" style="margin-top:10px">Expected goals: ${p.hx.toFixed(2)} – ${p.ax.toFixed(2)} · Over 2.5: ${p.over.toFixed(0)}% · BTTS: ${p.btts.toFixed(0)}% · Confidence: ${p.confidence}</div></div>`;list.appendChild(div)});results.style.display='block';status.className='status ok';status.textContent=`✅ ${predictions.length} ${leagueName} fixture(s) analysed using SportScore team schedules.`}catch(e){status.className='status error';status.textContent='❌ '+e.message}finally{btn.disabled=false}}
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(() => {});
+  });
+}
+</script>
+
+</body>
+</html>
